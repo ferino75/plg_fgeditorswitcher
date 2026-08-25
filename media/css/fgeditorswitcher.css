@@ -17,16 +17,20 @@
 /*
  * Native browser <select> dropdown arrows render differently to a button's
  * icon, so the native arrow is replaced with a plain chevron drawn via
- * background-image instead.
+ * background-image instead. All of these are !important: some admin
+ * templates apply their own !important background/appearance resets to
+ * <select> elements (e.g. as part of a normalize/accessibility layer), which
+ * would otherwise silently win over a plain declaration here even though
+ * this rule loads after them.
  */
 [id^="fgeditorswitcher-select-"] {
-	appearance: none;
-	-webkit-appearance: none;
-	-moz-appearance: none;
+	appearance: none !important;
+	-webkit-appearance: none !important;
+	-moz-appearance: none !important;
 	vertical-align: middle;
-	background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='%23fff' d='M8 11 3 6h10z'/%3E%3C/svg%3E");
-	background-repeat: no-repeat;
-	background-position: right .6rem center;
-	background-size: 11px 11px;
+	background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='%23fff' d='M8 11 3 6h10z'/%3E%3C/svg%3E") !important;
+	background-repeat: no-repeat !important;
+	background-position: right .6rem center !important;
+	background-size: 11px 11px !important;
 	padding-right: 1.9rem !important;
 }

@@ -1,5 +1,16 @@
 # Changelog — FG Editor Switcher (plg_fgeditorswitcher)
 
+## 2.0.3 — Fixed missing dropdown arrow on some admin templates
+- On some admin templates, the custom chevron drawn via `background-image`
+  was not showing at all - DevTools confirmed the computed `background-image`
+  was `none`, i.e. the rule wasn't applying, most likely because the admin
+  template applies its own `!important` background/appearance reset to
+  `<select>` elements which otherwise wins regardless of load order.
+- Fix: added `!important` to every arrow-related declaration
+  (`appearance`, `background-image`, `background-repeat`,
+  `background-position`, `background-size`) in `fgeditorswitcher.css`, so it
+  reliably wins over such template resets.
+
 ## 2.0.2 — Fixed for real: language file naming convention
 - v2.0.1's fix (adding `<folder>language</folder>` to `<files>`) was based on a
   wrong theory and didn't fix anything. The actual root cause: Joomla derives

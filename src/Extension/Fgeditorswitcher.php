@@ -2,7 +2,7 @@
 /**
  * @package       Joomla.Plugin
  * @subpackage    Editors.fgeditorswitcher
- * @version       2.0.2
+ * @version       2.0.3
  *
  * @copyright     (C) 2026 Fero. Based on the original "Editor - Switcher" plugin
  *                (C) 2007 Yoshiki Kozaki, substantially rewritten for native
@@ -209,8 +209,8 @@ final class Fgeditorswitcher extends CMSPlugin
 		{
 			$assetsRegistered = true;
 			$wa               = $this->getApp()->getDocument()->getWebAssetManager();
-			$wa->registerAndUseStyle('plg.editors.fgeditorswitcher', 'media/plg_fgeditorswitcher/css/fgeditorswitcher.css', ['version' => '2.0.2']);
-			$wa->registerAndUseScript('plg.editors.fgeditorswitcher', 'media/plg_fgeditorswitcher/js/fgeditorswitcher.js', ['version' => '2.0.2'], ['defer' => true]);
+			$wa->registerAndUseStyle('plg.editors.fgeditorswitcher', 'media/plg_fgeditorswitcher/css/fgeditorswitcher.css', ['version' => '2.0.3']);
+			$wa->registerAndUseScript('plg.editors.fgeditorswitcher', 'media/plg_fgeditorswitcher/js/fgeditorswitcher.js', ['version' => '2.0.3'], ['defer' => true]);
 		}
 
 		// A page can contain more than one editor field (e.g. multiple custom
@@ -275,7 +275,7 @@ final class Fgeditorswitcher extends CMSPlugin
 		// the same "xtd-button btn btn-secondary" classes as the standard
 		// editor-xtd buttons (Article/Image/Pagebreak/Read More/...) so it
 		// automatically matches their height, colour and rounding.
-		return '<!-- plg_fgeditorswitcher v2.0.2 -->'
+		return '<!-- plg_fgeditorswitcher v2.0.3 -->'
 			. '<div id="fgeditorswitcherSelector-' . $suffix . '" style="display:inline-flex;align-items:center;gap:.4rem;max-width:100%;">'
 			. '<input type="hidden" id="fgeditorswitcher-currentvalue-' . $suffix . '" value="'. $current . '" />'
 			. HTMLHelper::_('select.genericlist', $editors, 'fgeditorswitcher-' . $suffix
