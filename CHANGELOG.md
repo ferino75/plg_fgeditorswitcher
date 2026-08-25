@@ -1,5 +1,26 @@
 # Changelog — FG Editor Switcher (plg_fgeditorswitcher)
 
+## 2.0.6 — More robust fallback when the "None" editor is disabled
+- Previously, whenever the requested editor was invalid, the plugin fell back
+  straight to `PluginHelper::getPlugin('editors', 'none')` unconditionally -
+  assuming "Editor - None" exists and is enabled. True in practice, but an
+  admin could disable it, leaving `$plugin` empty and `$plugin->name` unsafe
+  to read.
+- Fix: added `resolveEditor()`, trying the requested editor, then "None" (if
+  enabled), then the first other enabled editor plugin, only throwing if
+  genuinely no usable editor plugin is enabled at all.
+
+## Repo-only: added `<php_minimum>` to `updates.xml`
+- `updates.xml` declared `<targetplatform>` matching Joomla 4/5/6, but had no
+  `<php_minimum>`. The plugin uses typed properties (`protected ?Editor
+  $switchereditor = null;`), which require PHP 7.4+ - Joomla 4's own official
+  minimum is PHP 7.2.5, so without this the update server could in theory
+  offer the plugin to a Joomla 4 site still running PHP 7.2/7.3, resulting in
+  a PHP parse error on install.
+- Fix: added `<php_minimum>7.4.0</php_minimum>` to `updates.xml`. Not a code
+  change - `updates.xml` isn't part of the installed package, so no plugin
+  version bump for this.
+
 ## 2.0.5 — Fixed: Cancel on the confirmation dialog left the wrong option shown
 - If a user picked a different editor, the confirmation dialog appeared, and
   they clicked **Cancel**, the switch correctly did not happen (no cookie

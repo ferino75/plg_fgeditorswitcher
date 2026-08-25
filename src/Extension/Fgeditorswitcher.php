@@ -2,7 +2,7 @@
 /**
  * @package       Joomla.Plugin
  * @subpackage    Editors.fgeditorswitcher
- * @version       2.0.5
+ * @version       2.0.6
  *
  * @copyright     (C) 2026 Fero
  * @license       https://www.gnu.org/licenses/gpl-2.0.html GNU/GPL
@@ -162,6 +162,49 @@ final class Fgeditorswitcher extends CMSPlugin
 	}
 
 	/**
+	 * Resolve the requested editor to one that is actually safe/possible to
+	 * use, falling back in stages if it isn't.
+	 *
+	 * Previously, an invalid requested editor fell straight back to
+	 * PluginHelper::getPlugin('editors', 'none') unconditionally, assuming
+	 * that plugin exists and is enabled - true in practice, but an admin can
+	 * disable it, in which case $plugin would be a falsy/empty result and
+	 * $plugin->name would no longer be safe to read. This widens the fallback
+	 * to: the requested editor, then "none" (if enabled), then the first
+	 * other enabled editor plugin found, only failing outright if genuinely
+	 * none is available at all.
+	 *
+	 * @param   string  $requested  The editor element name to try first (from
+	 *                              the cookie, or the configured default).
+	 *
+	 * @return  string  The name of an editor plugin that is safe to use.
+	 * @throws  \RuntimeException  If no usable editor plugin is enabled at all.
+	 * @since   2.0.6
+	 */
+	private function resolveEditor(string $requested): string
+	{
+		if ($this->isValidEditor($requested))
+		{
+			return $requested;
+		}
+
+		if ($this->isValidEditor('none'))
+		{
+			return 'none';
+		}
+
+		foreach (PluginHelper::getPlugin('editors') as $plugin)
+		{
+			if ($plugin->name !== 'fgeditorswitcher')
+			{
+				return $plugin->name;
+			}
+		}
+
+		throw new \RuntimeException('FG Editor Switcher: no usable editor plugin is enabled.');
+	}
+
+	/**
 	 * Constructor
 	 *
 	 * @param   object  $subject  The object to observe
@@ -175,22 +218,18 @@ final class Fgeditorswitcher extends CMSPlugin
 		parent::__construct($subject, $config);
 
 		$reg = new Registry(PluginHelper::getPlugin('editors', 'fgeditorswitcher')->params);
-		$editor = $this->getApp()->getInput()->cookie->get($this->cookiename,
+		$requested = $this->getApp()->getInput()->cookie->get($this->cookiename,
 			$reg->get('default_editor', 'none'));
 
-		if ($this->isValidEditor($editor))
-		{
-			$plugin = PluginHelper::getPlugin('editors', $editor);
-			$this->setSwitcherEditor($plugin->name);
-		}
-		else
+		$editor = $this->resolveEditor($requested);
+
+		if ($editor !== $requested)
 		{
 			$this->getApp()->enqueueMessage(
 				Text::_('PLG_EDITORS_FGEDITORSWITCHER_EDITORWASNOTFOUND'), 'error');
-			//change to editors - none
-			$plugin = PluginHelper::getPlugin('editors', 'none');
-			$this->setSwitcherEditor($plugin->name);
 		}
+
+		$this->setSwitcherEditor($editor);
 	}
 
 	/**
@@ -231,8 +270,8 @@ final class Fgeditorswitcher extends CMSPlugin
 		{
 			$assetsRegistered = true;
 			$wa               = $this->getApp()->getDocument()->getWebAssetManager();
-			$wa->registerAndUseStyle('plg.editors.fgeditorswitcher', 'media/plg_fgeditorswitcher/css/fgeditorswitcher.css', ['version' => '2.0.5']);
-			$wa->registerAndUseScript('plg.editors.fgeditorswitcher', 'media/plg_fgeditorswitcher/js/fgeditorswitcher.js', ['version' => '2.0.5'], ['defer' => true]);
+			$wa->registerAndUseStyle('plg.editors.fgeditorswitcher', 'media/plg_fgeditorswitcher/css/fgeditorswitcher.css', ['version' => '2.0.6']);
+			$wa->registerAndUseScript('plg.editors.fgeditorswitcher', 'media/plg_fgeditorswitcher/js/fgeditorswitcher.js', ['version' => '2.0.6'], ['defer' => true]);
 		}
 
 		// A page can contain more than one editor field (e.g. multiple custom
@@ -291,7 +330,7 @@ final class Fgeditorswitcher extends CMSPlugin
 		// the same "xtd-button btn btn-secondary" classes as the standard
 		// editor-xtd buttons (Article/Image/Pagebreak/Read More/...) so it
 		// automatically matches their height, colour and rounding.
-		return '<!-- plg_fgeditorswitcher v2.0.5 -->'
+		return '<!-- plg_fgeditorswitcher v2.0.6 -->'
 			. '<div id="fgeditorswitcherSelector-' . $suffix . '" style="display:inline-flex;align-items:center;gap:.4rem;max-width:100%;">'
 			. '<input type="hidden" id="fgeditorswitcher-currentvalue-' . $suffix . '" value="'. $current . '" />'
 			. HTMLHelper::_('select.genericlist', $editors, 'fgeditorswitcher-' . $suffix
