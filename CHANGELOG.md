@@ -1,5 +1,15 @@
 # Changelog — FG Editor Switcher (plg_fgeditorswitcher)
 
+## 2.1.0 — Single VERSION constant for asset cache-busting
+- The version string was hardcoded in three separate PHP spots
+  (`registerAndUseStyle()`, `registerAndUseScript()`, and the diagnostic HTML
+  comment) plus the manifest's `<version>` tag - a release meant editing it
+  in four places.
+- Fix: added `private const VERSION`, referenced by all three PHP spots. The
+  manifest's `<version>` tag is a separate XML file and can't reference a PHP
+  constant, so it still needs its own edit on release (as does this
+  changelog) - down from four manual edits to two.
+
 ## 2.0.9 — Use `$this->params` instead of re-fetching the plugin
 - The constructor and `getEditorSelector()` each looked up this plugin's own
   row again via `PluginHelper::getPlugin('editors', 'fgeditorswitcher')` just
