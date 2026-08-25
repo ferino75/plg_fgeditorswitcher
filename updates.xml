@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<updates>
+	<update>
+		<name>FG Editor Switcher</name>
+		<description>Lets you switch which editor (TinyMCE, CodeMirror, None, ...) is used for editing fields, directly from a dropdown next to the edit screen's toolbar.</description>
+		<element>fgeditorswitcher</element>
+		<type>plugin</type>
+		<folder>editors</folder>
+		<client>site</client>
+		<version>2.0.0</version>
+		<infourl title="FG Editor Switcher">https://github.com/ferino75/plg_fgeditorswitcher</infourl>
+		<downloads>
+			<downloadurl type="full" format="zip">https://github.com/ferino75/plg_fgeditorswitcher/releases/download/v2.0.0/plg_fgeditorswitcher_v2.0.0.zip</downloadurl>
+		</downloads>
+		<tags>
+			<tag>stable</tag>
+		</tags>
+		<maintainer>Fero</maintainer>
+		<maintainerurl>https://ferino75.github.io/</maintainerurl>
+		<category>Plugins</category>
+		<targetplatform name="joomla" version="[456]\.[0-9]+\.[0-9]+" />
+	</update>
+</updates>

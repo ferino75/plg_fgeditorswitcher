@@ -1,0 +1,32 @@
+/**
+ * plg_fgeditorswitcher
+ *
+ * Fallback spacing for the wrapper (only relevant before/if the selector is
+ * relocated into a ".editor-xtd-buttons" toolbar by fgeditorswitcher.js) and
+ * the selector's own look. Deliberately does NOT set its own margin: the
+ * admin template's own ambient rule ".editor-xtd-buttons .btn { margin-bottom: 5px; }"
+ * already applies here too (the selector also carries the ".btn" class), and
+ * that asymmetric margin is what keeps it vertically aligned with its
+ * sibling buttons under "align-items:center". Overriding it here would undo
+ * that alignment again.
+ */
+[id^="fgeditorswitcherSelector-"] {
+	margin: 6px 0;
+}
+
+/*
+ * Native browser <select> dropdown arrows render differently to a button's
+ * icon, so the native arrow is replaced with a plain chevron drawn via
+ * background-image instead.
+ */
+[id^="fgeditorswitcher-select-"] {
+	appearance: none;
+	-webkit-appearance: none;
+	-moz-appearance: none;
+	vertical-align: middle;
+	background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='%23fff' d='M8 11 3 6h10z'/%3E%3C/svg%3E");
+	background-repeat: no-repeat;
+	background-position: right .6rem center;
+	background-size: 11px 11px;
+	padding-right: 1.9rem !important;
+}
