@@ -2,7 +2,7 @@
 /**
  * @package       Joomla.Plugin
  * @subpackage    Editors.fgeditorswitcher
- * @version       2.0.8
+ * @version       2.0.9
  *
  * @copyright     (C) 2026 Fero
  * @license       https://www.gnu.org/licenses/gpl-2.0.html GNU/GPL
@@ -62,7 +62,6 @@ use Joomla\CMS\Plugin\CMSPlugin;
 use Joomla\CMS\Plugin\PluginHelper;
 use Joomla\CMS\HTML\HTMLHelper;
 use Joomla\CMS\Language\Text;
-use Joomla\Registry\Registry;
 use Joomla\CMS\Application\CMSApplicationInterface;
 use Joomla\CMS\Editor\Editor;
 
@@ -220,9 +219,11 @@ final class Fgeditorswitcher extends CMSPlugin
 	{
 		parent::__construct($subject, $config);
 
-		$reg = new Registry(PluginHelper::getPlugin('editors', 'fgeditorswitcher')->params);
+		// $this->params is already populated by the parent constructor from
+		// the same plugin row (services/provider.php passes it into $config)
+		// - no need to look it up again via PluginHelper::getPlugin().
 		$requested = $this->getApp()->getInput()->cookie->get($this->cookiename,
-			$reg->get('default_editor', 'none'));
+			$this->params->get('default_editor', 'none'));
 
 		$editor = $this->resolveEditor($requested);
 
@@ -273,8 +274,8 @@ final class Fgeditorswitcher extends CMSPlugin
 		{
 			$assetsRegistered = true;
 			$wa               = $this->getApp()->getDocument()->getWebAssetManager();
-			$wa->registerAndUseStyle('plg.editors.fgeditorswitcher', 'media/plg_fgeditorswitcher/css/fgeditorswitcher.css', ['version' => '2.0.8']);
-			$wa->registerAndUseScript('plg.editors.fgeditorswitcher', 'media/plg_fgeditorswitcher/js/fgeditorswitcher.js', ['version' => '2.0.8'], ['defer' => true]);
+			$wa->registerAndUseStyle('plg.editors.fgeditorswitcher', 'media/plg_fgeditorswitcher/css/fgeditorswitcher.css', ['version' => '2.0.9']);
+			$wa->registerAndUseScript('plg.editors.fgeditorswitcher', 'media/plg_fgeditorswitcher/js/fgeditorswitcher.js', ['version' => '2.0.9'], ['defer' => true]);
 		}
 
 		// A page can contain more than one editor field (e.g. multiple custom
@@ -291,7 +292,6 @@ final class Fgeditorswitcher extends CMSPlugin
 
 		$suffix = preg_replace('/[^A-Za-z0-9_-]/', '_', $name !== '' ? $name : 'field') . '-' . $instance;
 
-		$params  = new Registry(PluginHelper::getPlugin('editors', 'fgeditorswitcher')->params);
 		$editors = PluginHelper::getPlugin('editors');
 
 		foreach ($editors as $k => $o)
@@ -305,8 +305,8 @@ final class Fgeditorswitcher extends CMSPlugin
 			$o->text = ucfirst($o->name);
 		}
 
-		$confirmation = (bool) $params->get('confirmation', 1);
-		$debug        = (bool) $params->get('debug', 0);
+		$confirmation = (bool) $this->params->get('confirmation', 1);
+		$debug        = (bool) $this->params->get('debug', 0);
 		$confirmTitle = '';
 		$confirmMsg   = '';
 
@@ -340,7 +340,7 @@ final class Fgeditorswitcher extends CMSPlugin
 		// the same "xtd-button btn btn-secondary" classes as the standard
 		// editor-xtd buttons (Article/Image/Pagebreak/Read More/...) so it
 		// automatically matches their height, colour and rounding.
-		return '<!-- plg_fgeditorswitcher v2.0.8 -->'
+		return '<!-- plg_fgeditorswitcher v2.0.9 -->'
 			. '<div id="fgeditorswitcherSelector-' . $suffix . '" style="display:inline-flex;align-items:center;gap:.4rem;max-width:100%;">'
 			. HTMLHelper::_('select.genericlist', $editors, 'fgeditorswitcher-' . $suffix
 				, $attribs, 'name', 'text', $current, 'fgeditorswitcher-select-' . $suffix)

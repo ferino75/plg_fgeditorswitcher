@@ -1,5 +1,15 @@
 # Changelog — FG Editor Switcher (plg_fgeditorswitcher)
 
+## 2.0.9 — Use `$this->params` instead of re-fetching the plugin
+- The constructor and `getEditorSelector()` each looked up this plugin's own
+  row again via `PluginHelper::getPlugin('editors', 'fgeditorswitcher')` just
+  to read its params - even though `CMSPlugin`'s own constructor already
+  populates `$this->params` (a `Registry`) from the same row, since
+  `services/provider.php` passes it into `$config`.
+- Fix: use `$this->params` directly in both places; removed the now-unused
+  `use Joomla\Registry\Registry;` import. No behaviour change - purely
+  cleaner code, fewer dependencies, one less repeated plugin lookup.
+
 ## 2.0.8 — Guaranteed-unique selector ids
 - The id/name suffix was built purely from the sanitised control name, which
   is not actually guaranteed unique: two different names can sanitise to the
