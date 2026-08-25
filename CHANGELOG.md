@@ -1,5 +1,14 @@
 # Changelog — FG Editor Switcher (plg_fgeditorswitcher)
 
+## 2.0.7 — Removed dead hidden-input code
+- The `<input type="hidden" id="fgeditorswitcher-currentvalue-...">` (and its
+  `data-hidden-id` attribute) was a leftover from an earlier implementation.
+  Nothing read it, and it had an inconsistency of its own: initialised to the
+  editor's name (e.g. `"tinymce"`) but overwritten with a numeric option
+  index (e.g. `"2"`) once a switch was confirmed.
+- Removed the hidden input, `data-hidden-id`, and the corresponding
+  `hiddenId`/`hidden` handling in `fgeditorswitcher.js`.
+
 ## 2.0.6 — More robust fallback when the "None" editor is disabled
 - Previously, whenever the requested editor was invalid, the plugin fell back
   straight to `PluginHelper::getPlugin('editors', 'none')` unconditionally -

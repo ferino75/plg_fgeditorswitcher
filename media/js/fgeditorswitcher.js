@@ -3,11 +3,10 @@
  *
  * Behaviour for the editor switcher selector(s). This is a static, cacheable,
  * minifiable file loaded via Joomla's WebAssetManager. Per-instance
- * configuration (the confirmation dialog text, which hidden field to update,
- * the cookie name, etc.) is read from data-* attributes on each <select>
- * rather than being templated into the script itself, so the same file works
- * unchanged for any number of editor fields on the page and needs no
- * per-request regeneration.
+ * configuration (the confirmation dialog text, the cookie name, etc.) is
+ * read from data-* attributes on each <select> rather than being templated
+ * into the script itself, so the same file works unchanged for any number of
+ * editor fields on the page and needs no per-request regeneration.
  */
 (function () {
 	'use strict';
@@ -21,8 +20,6 @@
 	 */
 	function attachSwitcher(select)
 	{
-		var hiddenId = select.getAttribute('data-hidden-id');
-		var hidden = hiddenId ? document.getElementById(hiddenId) : null;
 		var confirmEnabled = select.getAttribute('data-confirm') === '1';
 		// The currently active value, read directly off the select at attach
 		// time (it always starts pre-selected to the active editor). Used
@@ -69,11 +66,6 @@
 					// while the real active editor stays whatever it was.
 					this.value = currentValue;
 					return;
-				}
-
-				if (hidden)
-				{
-					hidden.value = this.options.selectedIndex;
 				}
 			}
 

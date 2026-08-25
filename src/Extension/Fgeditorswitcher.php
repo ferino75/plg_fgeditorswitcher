@@ -2,7 +2,7 @@
 /**
  * @package       Joomla.Plugin
  * @subpackage    Editors.fgeditorswitcher
- * @version       2.0.6
+ * @version       2.0.7
  *
  * @copyright     (C) 2026 Fero
  * @license       https://www.gnu.org/licenses/gpl-2.0.html GNU/GPL
@@ -41,11 +41,11 @@
  *    page each get their own valid, non-duplicated selector instead of only
  *    the first one working. The JS/CSS assets are registered once per page
  *    via WebAssetManager regardless of how many fields exist.
- *  - Per-instance behaviour (confirmation text, which hidden field to update,
- *    the cookie name, debug logging) is passed to the static
- *    media/js/fgeditorswitcher.js via data-* attributes rather than being
- *    templated into inline JavaScript, so the JS is a plain cacheable asset
- *    and PHP only needs to do HTML-attribute escaping.
+ *  - Per-instance behaviour (confirmation text, the cookie name, debug
+ *    logging) is passed to the static media/js/fgeditorswitcher.js via
+ *    data-* attributes rather than being templated into inline JavaScript,
+ *    so the JS is a plain cacheable asset and PHP only needs to do
+ *    HTML-attribute escaping.
  *  - The cookie is written with "path=/" and "Secure" (on HTTPS) so the
  *    remembered editor choice does not depend on which admin URL it was set
  *    from. It is deliberately a session cookie (no persistent expiry).
@@ -270,8 +270,8 @@ final class Fgeditorswitcher extends CMSPlugin
 		{
 			$assetsRegistered = true;
 			$wa               = $this->getApp()->getDocument()->getWebAssetManager();
-			$wa->registerAndUseStyle('plg.editors.fgeditorswitcher', 'media/plg_fgeditorswitcher/css/fgeditorswitcher.css', ['version' => '2.0.6']);
-			$wa->registerAndUseScript('plg.editors.fgeditorswitcher', 'media/plg_fgeditorswitcher/js/fgeditorswitcher.js', ['version' => '2.0.6'], ['defer' => true]);
+			$wa->registerAndUseStyle('plg.editors.fgeditorswitcher', 'media/plg_fgeditorswitcher/css/fgeditorswitcher.css', ['version' => '2.0.7']);
+			$wa->registerAndUseScript('plg.editors.fgeditorswitcher', 'media/plg_fgeditorswitcher/js/fgeditorswitcher.js', ['version' => '2.0.7'], ['defer' => true]);
 		}
 
 		// A page can contain more than one editor field (e.g. multiple custom
@@ -305,18 +305,17 @@ final class Fgeditorswitcher extends CMSPlugin
 			$confirmMsg   = Text::_('PLG_EDITORS_FGEDITORSWITCHER_CONFIRM_MESSAGE');
 		}
 
-		// All per-instance behaviour (which hidden field to update, the
-		// confirmation text, the cookie name, whether debug logging is on)
-		// is passed to the static fgeditorswitcher.js via data-* attributes
-		// instead of being templated directly into JavaScript source - this
-		// also means everything here only needs plain HTML-attribute
-		// escaping, not JS-string escaping. There is no "current index"
+		// All per-instance behaviour (the confirmation text, the cookie
+		// name, whether debug logging is on) is passed to the static
+		// fgeditorswitcher.js via data-* attributes instead of being
+		// templated directly into JavaScript source - this also means
+		// everything here only needs plain HTML-attribute escaping, not
+		// JS-string escaping. There is no hidden field / "current index"
 		// attribute here: the script reads the select's own pre-selected
 		// value directly (it already starts on the active editor), which
 		// stays correct even if the editor list ever changes and lets a
 		// cancelled switch be reverted to the exact right option.
 		$attribs = 'class="xtd-button btn btn-secondary" style="width:auto;"'
-			. ' data-hidden-id="fgeditorswitcher-currentvalue-' . $suffix . '"'
 			. ' data-cookie-name="' . htmlspecialchars($this->cookiename, ENT_QUOTES, 'UTF-8') . '"'
 			. ' data-confirm="' . ($confirmation ? '1' : '0') . '"'
 			. ' data-confirm-title="' . htmlspecialchars($confirmTitle, ENT_QUOTES, 'UTF-8') . '"'
@@ -330,9 +329,8 @@ final class Fgeditorswitcher extends CMSPlugin
 		// the same "xtd-button btn btn-secondary" classes as the standard
 		// editor-xtd buttons (Article/Image/Pagebreak/Read More/...) so it
 		// automatically matches their height, colour and rounding.
-		return '<!-- plg_fgeditorswitcher v2.0.6 -->'
+		return '<!-- plg_fgeditorswitcher v2.0.7 -->'
 			. '<div id="fgeditorswitcherSelector-' . $suffix . '" style="display:inline-flex;align-items:center;gap:.4rem;max-width:100%;">'
-			. '<input type="hidden" id="fgeditorswitcher-currentvalue-' . $suffix . '" value="'. $current . '" />'
 			. HTMLHelper::_('select.genericlist', $editors, 'fgeditorswitcher-' . $suffix
 				, $attribs, 'name', 'text', $current, 'fgeditorswitcher-select-' . $suffix)
 			. '</div>';
