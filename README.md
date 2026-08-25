@@ -1,6 +1,6 @@
 # FG Editor Switcher
 
-![Version](https://img.shields.io/badge/version-2.0.0-blue.svg)
+![Version](https://img.shields.io/github/v/release/ferino75/plg_fgeditorswitcher?label=version)
 ![Joomla](https://img.shields.io/badge/Joomla-4%20%7C%205%20%7C%206-orange.svg)
 ![License](https://img.shields.io/badge/license-GPL--2.0-brightgreen.svg)
 ![PHP](https://img.shields.io/badge/PHP-8.0%2B-777bb4.svg)
