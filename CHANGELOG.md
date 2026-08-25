@@ -1,5 +1,12 @@
 # Changelog — FG Editor Switcher (plg_fgeditorswitcher)
 
+## 2.1.1 — More natural confirmation dialog text
+- The confirmation dialog text ("The data which is not saved does not
+  return." / "Is it all right?") read like an old, awkward translation.
+- Updated to "Switch editor?" / "Unsaved changes will be lost." (en-GB) and
+  "Prepnúť editor?" / "Neuložené zmeny sa pri prepnutí stratia." (sk-SK) -
+  the question now shows first, matching how the dialog actually reads.
+
 ## 2.1.0 — Single VERSION constant for asset cache-busting
 - The version string was hardcoded in three separate PHP spots
   (`registerAndUseStyle()`, `registerAndUseScript()`, and the diagnostic HTML
