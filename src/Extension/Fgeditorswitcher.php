@@ -2,11 +2,9 @@
 /**
  * @package       Joomla.Plugin
  * @subpackage    Editors.fgeditorswitcher
- * @version       2.0.3
+ * @version       2.0.4
  *
- * @copyright     (C) 2026 Fero. Based on the original "Editor - Switcher" plugin
- *                (C) 2007 Yoshiki Kozaki, substantially rewritten for native
- *                Joomla 6 compatibility and rebranded into the FG series.
+ * @copyright     (C) 2026 Fero
  * @license       https://www.gnu.org/licenses/gpl-2.0.html GNU/GPL
  *
  * @author        Fero
@@ -140,6 +138,30 @@ final class Fgeditorswitcher extends CMSPlugin
 	}
 
 	/**
+	 * Check whether a given editor name is safe to switch to.
+	 *
+	 * The cookie that decides which underlying editor to use is
+	 * client-controlled input (a browser cookie, trivially editable by the
+	 * visitor). Nothing else guards against it naming this very plugin's own
+	 * element ("fgeditorswitcher"): PluginHelper::isEnabled() would happily
+	 * return true for it (it IS enabled, after all), and Editor::getInstance()
+	 * would then hand back a wrapper pointing straight back at this class,
+	 * so onDisplay() would delegate to itself. Excluding it here stops that
+	 * self-reference before it can happen.
+	 *
+	 * @param   string  $editor  The editor element name to check.
+	 *
+	 * @return  bool
+	 * @since   2.0.4
+	 */
+	private function isValidEditor(string $editor): bool
+	{
+		return $editor !== ''
+			&& $editor !== 'fgeditorswitcher'
+			&& PluginHelper::isEnabled('editors', $editor);
+	}
+
+	/**
 	 * Constructor
 	 *
 	 * @param   object  $subject  The object to observe
@@ -156,7 +178,7 @@ final class Fgeditorswitcher extends CMSPlugin
 		$editor = $this->getApp()->getInput()->cookie->get($this->cookiename,
 			$reg->get('default_editor', 'none'));
 
-		if (PluginHelper::isEnabled('editors', $editor))
+		if ($this->isValidEditor($editor))
 		{
 			$plugin = PluginHelper::getPlugin('editors', $editor);
 			$this->setSwitcherEditor($plugin->name);
@@ -209,8 +231,8 @@ final class Fgeditorswitcher extends CMSPlugin
 		{
 			$assetsRegistered = true;
 			$wa               = $this->getApp()->getDocument()->getWebAssetManager();
-			$wa->registerAndUseStyle('plg.editors.fgeditorswitcher', 'media/plg_fgeditorswitcher/css/fgeditorswitcher.css', ['version' => '2.0.3']);
-			$wa->registerAndUseScript('plg.editors.fgeditorswitcher', 'media/plg_fgeditorswitcher/js/fgeditorswitcher.js', ['version' => '2.0.3'], ['defer' => true]);
+			$wa->registerAndUseStyle('plg.editors.fgeditorswitcher', 'media/plg_fgeditorswitcher/css/fgeditorswitcher.css', ['version' => '2.0.4']);
+			$wa->registerAndUseScript('plg.editors.fgeditorswitcher', 'media/plg_fgeditorswitcher/js/fgeditorswitcher.js', ['version' => '2.0.4'], ['defer' => true]);
 		}
 
 		// A page can contain more than one editor field (e.g. multiple custom
@@ -275,7 +297,7 @@ final class Fgeditorswitcher extends CMSPlugin
 		// the same "xtd-button btn btn-secondary" classes as the standard
 		// editor-xtd buttons (Article/Image/Pagebreak/Read More/...) so it
 		// automatically matches their height, colour and rounding.
-		return '<!-- plg_fgeditorswitcher v2.0.3 -->'
+		return '<!-- plg_fgeditorswitcher v2.0.4 -->'
 			. '<div id="fgeditorswitcherSelector-' . $suffix . '" style="display:inline-flex;align-items:center;gap:.4rem;max-width:100%;">'
 			. '<input type="hidden" id="fgeditorswitcher-currentvalue-' . $suffix . '" value="'. $current . '" />'
 			. HTMLHelper::_('select.genericlist', $editors, 'fgeditorswitcher-' . $suffix

@@ -1,5 +1,17 @@
 # Changelog — FG Editor Switcher (plg_fgeditorswitcher)
 
+## 2.0.4 — Prevent switching to itself via the cookie
+- The cookie that decides which underlying editor to use is client-controlled
+  input. Nothing previously stopped it from naming this very plugin's own
+  element (`fgeditorswitchercurrent=fgeditorswitcher`): `PluginHelper::isEnabled()`
+  would return true for it (it genuinely is enabled), and `Editor::getInstance()`
+  would then hand back a wrapper pointing straight back at this class, so
+  `onDisplay()` would delegate to itself.
+- Fix: added a private `isValidEditor()` check (excludes an empty value and
+  the plugin's own `fgeditorswitcher` element, in addition to the existing
+  `PluginHelper::isEnabled()` check) used for both the cookie value and the
+  `default_editor` fallback.
+
 ## 2.0.3 — Fixed missing dropdown arrow on some admin templates
 - On some admin templates, the custom chevron drawn via `background-image`
   was not showing at all - DevTools confirmed the computed `background-image`

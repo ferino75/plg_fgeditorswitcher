@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <extension type="plugin" version="4.0" group="editors" method="upgrade">
 	<name>plg_editors_fgeditorswitcher</name>
-	<version>2.0.3</version>
+	<version>2.0.4</version>
 	<author>Fero</author>
 	<authorEmail>ferino@atlas.sk</authorEmail>
 	<authorUrl>https://ferino75.github.io/</authorUrl>
 	<creationDate>August 2026</creationDate>
-	<copyright>(C) 2026 Fero. Based on the original "Editor - Switcher" plugin (C) 2007 Yoshiki Kozaki.</copyright>
+	<copyright>(C) 2026 Fero</copyright>
 	<license>https://www.gnu.org/licenses/gpl-2.0.html GNU/GPL</license>
 	<description>PLG_EDITORS_FGEDITORSWITCHER_XML_DESCRIPTION</description>
 	<namespace path="src">FG\Plugin\Editors\Fgeditorswitcher</namespace>
