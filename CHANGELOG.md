@@ -1,5 +1,16 @@
 # Changelog — FG Editor Switcher (plg_fgeditorswitcher)
 
+## 2.0.8 — Guaranteed-unique selector ids
+- The id/name suffix was built purely from the sanitised control name, which
+  is not actually guaranteed unique: two different names can sanitise to the
+  same string (e.g. `jform[a][b]` and `jform_a__b_` both become
+  `jform_a__b_`), and the same control name could in principle appear twice
+  on one page.
+- Fix: appended a static per-request counter to the suffix, which genuinely
+  guarantees uniqueness regardless of what the sanitised name collides with.
+  The sanitised name is kept for readability, the counter is what actually
+  prevents duplicate ids.
+
 ## 2.0.7 — Removed dead hidden-input code
 - The `<input type="hidden" id="fgeditorswitcher-currentvalue-...">` (and its
   `data-hidden-id` attribute) was a leftover from an earlier implementation.

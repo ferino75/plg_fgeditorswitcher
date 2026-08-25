@@ -2,7 +2,7 @@
 /**
  * @package       Joomla.Plugin
  * @subpackage    Editors.fgeditorswitcher
- * @version       2.0.7
+ * @version       2.0.8
  *
  * @copyright     (C) 2026 Fero
  * @license       https://www.gnu.org/licenses/gpl-2.0.html GNU/GPL
@@ -36,11 +36,14 @@
  *    selector reintroduces a vertical offset against its siblings. If no such
  *    toolbar exists for the active editor (e.g. "Editor - None"), the
  *    selector simply stays in its default inline position - never hidden.
- *  - getEditorSelector() builds a unique id/name suffix from the editor
- *    field's own control name, so multiple editor fields on the same admin
- *    page each get their own valid, non-duplicated selector instead of only
- *    the first one working. The JS/CSS assets are registered once per page
- *    via WebAssetManager regardless of how many fields exist.
+ *  - getEditorSelector() builds a unique id/name suffix for every instance
+ *    (a sanitised version of the editor field's own control name, plus a
+ *    static per-request counter that actually guarantees uniqueness - the
+ *    sanitised name alone can collide), so multiple editor fields on the
+ *    same admin page each get their own valid, non-duplicated selector
+ *    instead of only the first one working. The JS/CSS assets are
+ *    registered once per page via WebAssetManager regardless of how many
+ *    fields exist.
  *  - Per-instance behaviour (confirmation text, the cookie name, debug
  *    logging) is passed to the static media/js/fgeditorswitcher.js via
  *    data-* attributes rather than being templated into inline JavaScript,
@@ -270,15 +273,23 @@ final class Fgeditorswitcher extends CMSPlugin
 		{
 			$assetsRegistered = true;
 			$wa               = $this->getApp()->getDocument()->getWebAssetManager();
-			$wa->registerAndUseStyle('plg.editors.fgeditorswitcher', 'media/plg_fgeditorswitcher/css/fgeditorswitcher.css', ['version' => '2.0.7']);
-			$wa->registerAndUseScript('plg.editors.fgeditorswitcher', 'media/plg_fgeditorswitcher/js/fgeditorswitcher.js', ['version' => '2.0.7'], ['defer' => true]);
+			$wa->registerAndUseStyle('plg.editors.fgeditorswitcher', 'media/plg_fgeditorswitcher/css/fgeditorswitcher.css', ['version' => '2.0.8']);
+			$wa->registerAndUseScript('plg.editors.fgeditorswitcher', 'media/plg_fgeditorswitcher/js/fgeditorswitcher.js', ['version' => '2.0.8'], ['defer' => true]);
 		}
 
 		// A page can contain more than one editor field (e.g. multiple custom
-		// fields using the "Editor" type). Build an id/name suffix from this
-		// field's own control name so every instance gets its own valid,
-		// non-duplicated ids.
-		$suffix = preg_replace('/[^A-Za-z0-9_-]/', '_', $name !== '' ? $name : uniqid('fgeditorswitcher_'));
+		// fields using the "Editor" type). The sanitised control name alone
+		// is not a reliable enough suffix: two different names can collapse
+		// to the same sanitised string (e.g. "jform[a][b]" and "jform_a__b_"
+		// both become "jform_a__b_"), and the same control name could
+		// conceivably appear twice on one page. A static per-request counter
+		// is appended so every instance gets a genuinely unique id/name,
+		// regardless of what the sanitised name collides with - the
+		// sanitised name itself is kept purely for readability.
+		static $instance = 0;
+		$instance++;
+
+		$suffix = preg_replace('/[^A-Za-z0-9_-]/', '_', $name !== '' ? $name : 'field') . '-' . $instance;
 
 		$params  = new Registry(PluginHelper::getPlugin('editors', 'fgeditorswitcher')->params);
 		$editors = PluginHelper::getPlugin('editors');
@@ -329,7 +340,7 @@ final class Fgeditorswitcher extends CMSPlugin
 		// the same "xtd-button btn btn-secondary" classes as the standard
 		// editor-xtd buttons (Article/Image/Pagebreak/Read More/...) so it
 		// automatically matches their height, colour and rounding.
-		return '<!-- plg_fgeditorswitcher v2.0.7 -->'
+		return '<!-- plg_fgeditorswitcher v2.0.8 -->'
 			. '<div id="fgeditorswitcherSelector-' . $suffix . '" style="display:inline-flex;align-items:center;gap:.4rem;max-width:100%;">'
 			. HTMLHelper::_('select.genericlist', $editors, 'fgeditorswitcher-' . $suffix
 				, $attribs, 'name', 'text', $current, 'fgeditorswitcher-select-' . $suffix)
