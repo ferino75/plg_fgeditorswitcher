@@ -24,7 +24,12 @@
 		var hiddenId = select.getAttribute('data-hidden-id');
 		var hidden = hiddenId ? document.getElementById(hiddenId) : null;
 		var confirmEnabled = select.getAttribute('data-confirm') === '1';
-		var currentIndex = parseInt(select.getAttribute('data-current-index'), 10) || 0;
+		// The currently active value, read directly off the select at attach
+		// time (it always starts pre-selected to the active editor). Used
+		// instead of an index so it stays correct even if the list of
+		// editors ever changes, and so a cancelled switch can be reverted to
+		// it below.
+		var currentValue = select.value;
 		var confirmTitle = select.getAttribute('data-confirm-title') || '';
 		var confirmMsg = select.getAttribute('data-confirm-msg') || '';
 		var cookieName = select.getAttribute('data-cookie-name');
@@ -51,13 +56,18 @@
 		{
 			if (confirmEnabled)
 			{
-				if (this.options.selectedIndex === currentIndex)
+				if (this.value === currentValue)
 				{
 					return;
 				}
 
 				if (!window.confirm(confirmTitle + '\r\n' + confirmMsg))
 				{
+					// The page isn't reloading (nothing was actually
+					// switched), so the <select> must be reverted by hand -
+					// otherwise it would keep showing the cancelled choice
+					// while the real active editor stays whatever it was.
+					this.value = currentValue;
 					return;
 				}
 

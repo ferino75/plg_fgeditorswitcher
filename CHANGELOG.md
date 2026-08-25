@@ -1,5 +1,16 @@
 # Changelog — FG Editor Switcher (plg_fgeditorswitcher)
 
+## 2.0.5 — Fixed: Cancel on the confirmation dialog left the wrong option shown
+- If a user picked a different editor, the confirmation dialog appeared, and
+  they clicked **Cancel**, the switch correctly did not happen (no cookie
+  change, no reload) - but the `<select>` kept displaying the newly picked
+  (cancelled) option instead of reverting to the actually active editor.
+- Fix: track the select's value (not its index - stays correct even if the
+  editor list changes) at attach time, and explicitly restore it
+  (`this.value = currentValue`) when the confirmation is cancelled. The now
+  unused `data-current-index` attribute/index-tracking was removed from both
+  the PHP and the JS side.
+
 ## 2.0.4 — Prevent switching to itself via the cookie
 - The cookie that decides which underlying editor to use is client-controlled
   input. Nothing previously stopped it from naming this very plugin's own
