@@ -1,5 +1,19 @@
 # Changelog — FG Editor Switcher (plg_fgeditorswitcher)
 
+## 2.0.2 — Fixed for real: language file naming convention
+- v2.0.1's fix (adding `<folder>language</folder>` to `<files>`) was based on a
+  wrong theory and didn't fix anything. The actual root cause: Joomla derives
+  the language extension name a plugin looks for internally as
+  `plg_<group>_<element>` (e.g. `Plg_editors_fgeditorswitcher` inside
+  `CMSPlugin::loadLanguage()`) - but the language `.ini`/`.sys.ini` files were
+  named just `plg_fgeditorswitcher.*`, missing the `editors_` group segment
+  that the original `plg_editors_switcher` naming always had. The lookup name
+  and the actual filenames never matched, regardless of which folder they
+  were installed into - hence v2.0.1 not helping either.
+- Fix: renamed all four language files to `plg_editors_fgeditorswitcher.ini` /
+  `.sys.ini` (en-GB, sk-SK) and updated the manifest's `<languages>` entries
+  and `<name>` to match.
+
 ## 2.0.1 — Fixed: language strings not translating in the plugin admin screen
 - After install, the Plugins → FG Editor Switcher edit screen showed raw,
   untranslated `PLG_EDITORS_FGEDITORSWITCHER_...` keys instead of proper
