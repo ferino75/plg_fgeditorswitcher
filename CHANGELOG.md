@@ -1,5 +1,21 @@
 # Changelog — FG Editor Switcher (plg_fgeditorswitcher)
 
+## 2.0.1 — Fixed: language strings not translating in the plugin admin screen
+- After install, the Plugins → FG Editor Switcher edit screen showed raw,
+  untranslated `PLG_EDITORS_FGEDITORSWITCHER_...` keys instead of proper
+  labels/description.
+- Root cause: `CMSPlugin::loadLanguage()` (triggered automatically via
+  `autoloadLanguage = true`) tries `administrator/language/<tag>/` first,
+  and falls back to the plugin's *own* installed folder
+  (`plugins/editors/fgeditorswitcher/language/<tag>/...`) - never the
+  site-wide `language/<tag>/` folder that the manifest's root-level
+  `<languages>` block installs to.
+- Fix: added `<folder>language</folder>` to the manifest's `<files>` section
+  so the language files are also copied directly into the plugin's own
+  install folder, matching where `loadLanguage()`'s fallback looks. The
+  original site-wide `<languages>` declaration was kept as well (harmless,
+  and covers other contexts that may still check it).
+
 ## 2.0.0 — Rebranded into the FG series
 
 - Renamed from `plg_editors_switcher` to `plg_fgeditorswitcher`; namespace
