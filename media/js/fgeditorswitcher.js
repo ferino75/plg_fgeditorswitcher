@@ -13,6 +13,25 @@
 
 	var SCROLL_KEY = 'plg_fgeditorswitcher_scroll';
 
+	// Take over scroll restoration ourselves so the browser's own automatic
+	// restoration (which can run at an unpredictable point and fight with
+	// our own restoreScrollPosition() below) doesn't interfere. Set as early
+	// as possible, before any restoration - by either the browser or us -
+	// has had a chance to happen.
+	try
+	{
+		if ('scrollRestoration' in history)
+		{
+			history.scrollRestoration = 'manual';
+		}
+	}
+	catch (e)
+	{
+		// Some browsers throw for this in certain contexts (e.g. sandboxed
+		// iframes) - losing manual control just means we fall back to
+		// default browser behaviour, not a functional break.
+	}
+
 	/**
 	 * Attach the change handler for a single switcher <select>.
 	 *
@@ -283,6 +302,17 @@
 	document.addEventListener('DOMContentLoaded', function ()
 	{
 		relocateAndMatch();
-		restoreScrollPosition();
+	});
+
+	// "load" (fires once all resources - including editor iframes such as
+	// TinyMCE's - have finished loading) rather than "DOMContentLoaded" (which
+	// fires much earlier, before layout has necessarily settled): TinyMCE in
+	// particular builds its own iframe asynchronously, which can change the
+	// page's height and silently undo a scroll restoration attempted too
+	// early. requestAnimationFrame() waits one more frame on top of that, so
+	// the restore happens after the browser's own next layout/paint pass.
+	window.addEventListener('load', function ()
+	{
+		requestAnimationFrame(restoreScrollPosition);
 	});
 })();

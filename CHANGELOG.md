@@ -1,5 +1,17 @@
 # Changelog — FG Editor Switcher (plg_fgeditorswitcher)
 
+## 2.1.9 — More reliable scroll restoration
+- The scroll position was restored on `DOMContentLoaded`, which fires before
+  layout has necessarily settled - TinyMCE in particular builds its own
+  iframe asynchronously, which can change the page's height and silently
+  undo a too-early scroll restoration.
+- Fix: set `history.scrollRestoration = 'manual'` (so the browser's own
+  automatic restoration doesn't fight with ours) and moved the restore to
+  `window.load` (fires once all resources, including editor iframes, have
+  finished loading) wrapped in `requestAnimationFrame()` for one more frame
+  of margin. The relocation/colour-matching logic stays on
+  `DOMContentLoaded` as before - unaffected by this.
+
 ## 2.1.8 — Accessible label + debounced change (no more per-arrow-key dialogs)
 - **2.1 Accessibility:** the `<select>` had no accessible name for screen
   readers (no `<label>`/`aria-label`/`title`) - a WCAG 4.1.2 gap, even though
