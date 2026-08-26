@@ -2,7 +2,7 @@
 /**
  * @package       Joomla.Plugin
  * @subpackage    Editors.fgeditorswitcher
- * @version       2.1.3
+ * @version       2.1.4
  *
  * @copyright     (C) 2026 Fero
  * @license       https://www.gnu.org/licenses/gpl-2.0.html GNU/GPL
@@ -70,6 +70,13 @@
  *    nothing submitted, risking existing content being wiped on save) - a
  *    bare textarea keeps the field present and editable, just without any
  *    toolbar/WYSIWYG, in this hopefully-rare misconfigured state.
+ *  - getEditorSelector() builds its own fresh array of select.option()
+ *    results rather than writing a "text" property directly onto the
+ *    objects PluginHelper::getPlugin('editors') returns. Those are
+ *    references into PluginHelper's own internal static cache (not copies),
+ *    so mutating one persists for the rest of the request and could leak
+ *    into any other code (another plugin, PluginsField, EditorsField...)
+ *    that reads the same cached plugin list afterwards.
  */
 
 
@@ -108,7 +115,7 @@ final class Fgeditorswitcher extends CMSPlugin
 	 * @var    string
 	 * @since  2.1.0
 	 */
-	private const VERSION = '2.1.3';
+	private const VERSION = '2.1.4';
 
 	/**
 	 * Affects constructor behavior. If true, language files will be loaded automatically.
@@ -378,17 +385,24 @@ final class Fgeditorswitcher extends CMSPlugin
 
 		$suffix = preg_replace('/[^A-Za-z0-9_-]/', '_', $name !== '' ? $name : 'field') . '-' . $instance;
 
-		$editors = PluginHelper::getPlugin('editors');
+		// PluginHelper::getPlugin() returns references to objects held in its
+		// own internal static cache (not copies) - writing a new property
+		// onto one of them, as an earlier version of this method did
+		// ("$o->text = ..."), mutates that shared cache for the rest of the
+		// request, potentially visible to any other code (another plugin,
+		// PluginsField, EditorsField...) that reads it afterwards. Building a
+		// fresh array of select.option() results instead never touches the
+		// cached objects at all.
+		$options = [];
 
-		foreach ($editors as $k => $o)
+		foreach (PluginHelper::getPlugin('editors') as $o)
 		{
-			if ($o->name == 'fgeditorswitcher')
+			if ($o->name === 'fgeditorswitcher')
 			{
-				unset($editors[$k]);
 				continue;
 			}
 
-			$o->text = ucfirst($o->name);
+			$options[] = HTMLHelper::_('select.option', $o->name, ucfirst($o->name));
 		}
 
 		$confirmation = (bool) $this->params->get('confirmation', 1);
@@ -428,8 +442,8 @@ final class Fgeditorswitcher extends CMSPlugin
 		// automatically matches their height, colour and rounding.
 		return '<!-- plg_fgeditorswitcher v' . self::VERSION . ' -->'
 			. '<div id="fgeditorswitcherSelector-' . $suffix . '" style="display:inline-flex;align-items:center;gap:.4rem;max-width:100%;">'
-			. HTMLHelper::_('select.genericlist', $editors, 'fgeditorswitcher-' . $suffix
-				, $attribs, 'name', 'text', $current, 'fgeditorswitcher-select-' . $suffix)
+			. HTMLHelper::_('select.genericlist', $options, 'fgeditorswitcher-' . $suffix
+				, $attribs, 'value', 'text', $current, 'fgeditorswitcher-select-' . $suffix)
 			. '</div>';
 	}
 

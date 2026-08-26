@@ -1,5 +1,15 @@
 # Changelog — FG Editor Switcher (plg_fgeditorswitcher)
 
+## 2.1.4 — Stopped mutating Joomla's shared plugin cache
+- `getEditorSelector()` wrote `$o->text = ucfirst($o->name);` directly onto
+  the objects returned by `PluginHelper::getPlugin('editors')` - but those
+  are references into `PluginHelper`'s own internal static cache, not
+  copies, so the write persisted for the rest of the request and could leak
+  into any other code (another plugin, `PluginsField`, `EditorsField`...)
+  reading the same cached plugin list afterwards.
+- Fix: build a fresh array of `HTMLHelper::_('select.option', ...)` results
+  instead, never touching the cached plugin objects at all.
+
 ## 2.1.3 — Safe degraded fallback instead of an empty field
 - If genuinely no usable editor plugin was enabled at all (`$switchereditor`
   stayed `null`), `onDisplay()` returned `''` - silently dropping the field
