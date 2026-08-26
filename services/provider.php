@@ -5,7 +5,7 @@
  * @subpackage  Editors.fgeditorswitcher
  *
  * @copyright   (C) 2026 Fero
- * @license     GNU General Public License version 2 or later; see LICENSE.txt
+ * @license     GNU General Public License version 2 or later; see LICENSE
  */
 
 defined('_JEXEC') or die;

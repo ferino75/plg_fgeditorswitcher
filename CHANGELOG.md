@@ -1,5 +1,35 @@
 # Changelog — FG Editor Switcher (plg_fgeditorswitcher)
 
+## 2.2.1 — Packaging/manifest hygiene batch
+- **`<php_minimum>` in the manifest itself**, not just `updates.xml`: without
+  it, Joomla could accept a direct ZIP install on an unsupported PHP version
+  (typed properties need 7.4+) even though the update server would have
+  refused to offer it. README's PHP badge/requirement also corrected from
+  "8.0+" to "7.4+" to match.
+- **`type="editors"` → `type="fgeditors"`**, and `EditorsField` renamed to
+  `FgeditorsField`: the field type currently only resolves via
+  `addfieldprefix`, but a bare `type="editors"` would collide if Joomla core
+  ever ships its own class of that name in the future. Prefixing avoids that
+  class of problem outright.
+- **Cookie cleared on uninstall**: added `script.php` (a modern
+  `InstallerScriptInterface` implementation, matching how `services/provider.php`
+  is already written) that expires the `fgeditorswitchercurrent` cookie in
+  the uninstaller's browser. Purely cosmetic - the cookie was already
+  harmless once the plugin no longer exists to read it.
+- **Fixed `LICENSE.txt` → `LICENSE`** in a doc comment (the file in this repo
+  is named `LICENSE`, not `LICENSE.txt`).
+- **Migrated to `media/joomla.asset.json`** for declaring the plugin's CSS/JS,
+  the currently recommended Joomla 4+/5+ approach, replacing the ad hoc
+  `registerAndUseStyle()`/`registerAndUseScript()` calls with `useStyle()`/
+  `useScript()` against names declared in the new JSON file (a plugin's own
+  asset registry isn't auto-discovered the way a component's is, so it's
+  explicitly added via `$wa->getRegistry()->addRegistryFile(...)` first).
+  This is a "cleaner code" change with no functional difference for end
+  users, and does *not* reduce the number of places version numbers need
+  updating on a release (if anything, `joomla.asset.json` adds two more) -
+  kept deliberately for consistency with recommended practice rather than
+  for that reason.
+
 ## 2.2.0 — CSP-safe layout (no more inline `style="..."` attributes)
 - The wrapper `<div>` and `<select>` used PHP-generated inline `style="..."`
   attributes for layout (`display:inline-flex`, `width:auto`, etc). A site

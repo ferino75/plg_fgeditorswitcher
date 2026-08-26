@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <extension type="plugin" version="4.0" group="editors" method="upgrade">
 	<name>plg_editors_fgeditorswitcher</name>
-	<version>2.2.0</version>
+	<version>2.2.1</version>
 	<author>Fero</author>
 	<authorEmail>ferino@atlas.sk</authorEmail>
 	<authorUrl>https://ferino75.github.io/</authorUrl>
@@ -10,8 +10,11 @@
 	<license>https://www.gnu.org/licenses/gpl-2.0.html GNU/GPL</license>
 	<description>PLG_EDITORS_FGEDITORSWITCHER_XML_DESCRIPTION</description>
 	<namespace path="src">FG\Plugin\Editors\Fgeditorswitcher</namespace>
+	<scriptfile>script.php</scriptfile>
+	<php_minimum>7.4.0</php_minimum>
 	<files>
 		<filename>fgeditorswitcher.xml</filename>
+		<filename>script.php</filename>
 		<folder>src</folder>
 		<folder plugin="fgeditorswitcher">services</folder>
 		<folder>language</folder>
@@ -19,6 +22,7 @@
 	<media destination="plg_fgeditorswitcher" folder="media">
 		<folder>js</folder>
 		<folder>css</folder>
+		<filename>joomla.asset.json</filename>
 	</media>
 	<languages>
 		<language tag="en-GB">language/en-GB/plg_editors_fgeditorswitcher.ini</language>
@@ -29,7 +33,7 @@
 	<config>
 		<fields name="params">
 			<fieldset name="basic" addfieldprefix="FG\Plugin\Editors\Fgeditorswitcher\Field">
-				<field name="default_editor" type="editors" folder="editors" default="none" label="PLG_EDITORS_FGEDITORSWITCHER_EDITOR" description="PLG_EDITORS_FGEDITORSWITCHER_EDITOR_DESC">
+				<field name="default_editor" type="fgeditors" folder="editors" default="none" label="PLG_EDITORS_FGEDITORSWITCHER_EDITOR" description="PLG_EDITORS_FGEDITORSWITCHER_EDITOR_DESC">
 				</field>
 				<field name="confirmation" type="radio" default="1" layout="joomla.form.field.radio.switcher" label="PLG_EDITORS_FGEDITORSWITCHER_CONFIRMATION" description="PLG_EDITORS_FGEDITORSWITCHER_CONFIRMATION_DESC">
 					<option value="0">JOFF</option>
