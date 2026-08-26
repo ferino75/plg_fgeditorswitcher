@@ -2,7 +2,7 @@
 /**
  * @package       Joomla.Plugin
  * @subpackage    Editors.fgeditorswitcher
- * @version       2.1.2
+ * @version       2.1.3
  *
  * @copyright     (C) 2026 Fero
  * @license       https://www.gnu.org/licenses/gpl-2.0.html GNU/GPL
@@ -64,6 +64,12 @@
  *    that never actually call onDisplay() on this plugin, and avoiding a
  *    RuntimeException from resolveEditor() propagating out of the
  *    constructor into Joomla's own plugin-boot machinery.
+ *  - If genuinely no usable editor plugin is enabled at all,
+ *    onDisplay() renders a plain <textarea> instead of an empty string.
+ *    Returning '' would silently drop the field from the form (no input,
+ *    nothing submitted, risking existing content being wiped on save) - a
+ *    bare textarea keeps the field present and editable, just without any
+ *    toolbar/WYSIWYG, in this hopefully-rare misconfigured state.
  */
 
 
@@ -102,7 +108,7 @@ final class Fgeditorswitcher extends CMSPlugin
 	 * @var    string
 	 * @since  2.1.0
 	 */
-	private const VERSION = '2.1.2';
+	private const VERSION = '2.1.3';
 
 	/**
 	 * Affects constructor behavior. If true, language files will be loaded automatically.
@@ -472,7 +478,29 @@ final class Fgeditorswitcher extends CMSPlugin
 
 		if ($this->switchereditor === null)
 		{
-			return '';
+			// Genuinely no usable editor plugin is enabled at all (see
+			// resolveEditor()/initEditor()) - returning an empty string here
+			// would silently drop the field from the form entirely: no input
+			// means nothing gets submitted, which on save can wipe out
+			// existing content for this field. A plain, unstyled <textarea>
+			// is a safe degraded mode: the field stays present and editable
+			// (as raw HTML, with no toolbar/WYSIWYG) even in this
+			// misconfigured, hopefully rare situation.
+			if (empty($id))
+			{
+				$id = $name;
+			}
+
+			return sprintf(
+				'<textarea name="%s" id="%s" cols="%d" rows="%d" style="width:%s;height:%s;">%s</textarea>',
+				htmlspecialchars($name, ENT_QUOTES, 'UTF-8'),
+				htmlspecialchars($id, ENT_QUOTES, 'UTF-8'),
+				(int) $col,
+				(int) $row,
+				htmlspecialchars((string) $width, ENT_QUOTES, 'UTF-8'),
+				htmlspecialchars((string) $height, ENT_QUOTES, 'UTF-8'),
+				htmlspecialchars($content, ENT_QUOTES, 'UTF-8')
+			);
 		}
 
 		//Display the specified editor and EditorSelector

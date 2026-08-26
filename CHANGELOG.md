@@ -1,5 +1,14 @@
 # Changelog — FG Editor Switcher (plg_fgeditorswitcher)
 
+## 2.1.3 — Safe degraded fallback instead of an empty field
+- If genuinely no usable editor plugin was enabled at all (`$switchereditor`
+  stayed `null`), `onDisplay()` returned `''` - silently dropping the field
+  from the form entirely. No input means nothing gets submitted, which on
+  save could wipe out existing content for that field.
+- Fix: render a plain, unstyled `<textarea>` (properly HTML-escaped) in that
+  case instead. The field stays present and editable - no toolbar/WYSIWYG,
+  but content is safe - in this hopefully-rare misconfigured state.
+
 ## 2.1.2 — Lazy editor initialisation (moved out of the constructor)
 - Because this plugin must be the site's configured default editor to work
   at all, Joomla constructs it for *every* editor field rendered anywhere
