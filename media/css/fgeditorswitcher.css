@@ -17,11 +17,16 @@
 /*
  * Native browser <select> dropdown arrows render differently to a button's
  * icon, so the native arrow is replaced with a plain chevron drawn via
- * background-image instead. All of these are !important: some admin
- * templates apply their own !important background/appearance resets to
- * <select> elements (e.g. as part of a normalize/accessibility layer), which
- * would otherwise silently win over a plain declaration here even though
- * this rule loads after them.
+ * background-image instead. The white fill here is only the fallback used
+ * when the selector stays in its default inline position (not relocated
+ * into an ".editor-xtd-buttons" toolbar) - once relocated, fgeditorswitcher.js
+ * overrides this with a version of the same chevron coloured to match the
+ * toolbar's own button text colour, since a hard-coded white arrow would be
+ * invisible on an admin template whose xtd buttons are light-coloured. All
+ * of these are !important: some admin templates apply their own !important
+ * background/appearance resets to <select> elements (e.g. as part of a
+ * normalize/accessibility layer), which would otherwise silently win over a
+ * plain declaration here even though this rule loads after them.
  */
 [id^="fgeditorswitcher-select-"] {
 	appearance: none !important;

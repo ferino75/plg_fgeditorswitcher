@@ -226,6 +226,19 @@
 				select.style.setProperty('background-color', computed.backgroundColor, 'important');
 				select.style.setProperty('border-color', computed.borderColor, 'important');
 				select.style.setProperty('color', computed.color, 'important');
+
+				// The chevron drawn by fgeditorswitcher.css is a static
+				// white SVG - fine against the plugin's own default dark
+				// "btn-secondary" fallback colour, but invisible on an
+				// admin template whose xtd buttons are light-coloured.
+				// Rebuild the same chevron here with the button's actual
+				// text colour (already resolved above) and use "important"
+				// to override the CSS default.
+				var chevron = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16">'
+					+ '<path fill="' + computed.color + '" d="M8 11 3 6h10z"/></svg>';
+				select.style.setProperty(
+					'background-image', 'url("data:image/svg+xml,' + encodeURIComponent(chevron) + '")', 'important'
+				);
 			}
 		}
 	}

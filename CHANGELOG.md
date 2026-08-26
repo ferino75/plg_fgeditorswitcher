@@ -1,5 +1,17 @@
 # Changelog — FG Editor Switcher (plg_fgeditorswitcher)
 
+## 2.1.7 — Dropdown arrow now matches the toolbar's own text colour
+- The chevron drawn via CSS `background-image` was a hard-coded white SVG.
+  JS already copies `background-color`/`border-color`/`color` from the
+  toolbar's own reference button to match admin templates whose xtd buttons
+  aren't the plugin's own default dark colour - but the arrow stayed white
+  regardless, making it invisible on a light-coloured toolbar.
+- Fix: when JS copies those colours (i.e. the selector was successfully
+  relocated into a toolbar), it now also rebuilds the same chevron SVG with
+  the button's actual resolved text colour and overrides `background-image`
+  with it. The static white CSS chevron remains as the fallback for the
+  selector's default (not relocated) inline position.
+
 ## 2.1.6 — Avoid resubmitting a POST on switch
 - `window.location.reload()` repeats whatever HTTP method loaded the current
   document. Edit screens normally open via GET, but after a failed save/
