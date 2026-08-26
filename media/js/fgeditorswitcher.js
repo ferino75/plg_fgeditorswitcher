@@ -215,7 +215,7 @@
 	 */
 	function findToolbarFor(select)
 	{
-		var wrapper = select.closest('[id^="fgeditorswitcherSelector-"]');
+		var wrapper = select.closest('.fg-switcher-wrap');
 
 		if (!wrapper)
 		{
@@ -256,7 +256,7 @@
 	 */
 	function relocateAndMatch()
 	{
-		var selects = document.querySelectorAll('select[id^="fgeditorswitcher-select-"]');
+		var selects = document.querySelectorAll('select.fg-switcher-select');
 
 		for (var n = 0; n < selects.length; n++)
 		{

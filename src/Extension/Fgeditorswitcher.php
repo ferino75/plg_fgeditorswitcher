@@ -2,7 +2,7 @@
 /**
  * @package       Joomla.Plugin
  * @subpackage    Editors.fgeditorswitcher
- * @version       2.1.9
+ * @version       2.2.0
  *
  * @copyright     (C) 2026 Fero
  * @license       https://www.gnu.org/licenses/gpl-2.0.html GNU/GPL
@@ -122,7 +122,7 @@ final class Fgeditorswitcher extends CMSPlugin
 	 * @var    string
 	 * @since  2.1.0
 	 */
-	private const VERSION = '2.1.9';
+	private const VERSION = '2.2.0';
 
 	/**
 	 * Affects constructor behavior. If true, language files will be loaded automatically.
@@ -435,7 +435,7 @@ final class Fgeditorswitcher extends CMSPlugin
 		// cancelled switch be reverted to the exact right option.
 		$editorSelectorLabel = htmlspecialchars(Text::_('PLG_EDITORS_FGEDITORSWITCHER_SELECTEDITOR'), ENT_QUOTES, 'UTF-8');
 
-		$attribs = 'class="xtd-button btn btn-secondary" style="width:auto;"'
+		$attribs = 'class="xtd-button btn btn-secondary fg-switcher-select"'
 			. ' aria-label="' . $editorSelectorLabel . '"'
 			. ' title="' . $editorSelectorLabel . '"'
 			. ' data-cookie-name="' . htmlspecialchars($this->cookiename, ENT_QUOTES, 'UTF-8') . '"'
@@ -451,8 +451,16 @@ final class Fgeditorswitcher extends CMSPlugin
 		// the same "xtd-button btn btn-secondary" classes as the standard
 		// editor-xtd buttons (Article/Image/Pagebreak/Read More/...) so it
 		// automatically matches their height, colour and rounding.
+		// Layout comes from the "fg-switcher-wrap"/"fg-switcher-select" CSS
+		// classes (fgeditorswitcher.css), not inline style="..." attributes -
+		// a site running Joomla's CSP system plugin with a strict style-src
+		// (no 'unsafe-inline') would otherwise have these attributes
+		// stripped, breaking the layout. The many colours/positions set at
+		// runtime via JS's element.style API are unaffected either way - CSP
+		// only restricts inline style markup and <style> blocks, not
+		// programmatic CSSOM writes.
 		return '<!-- plg_fgeditorswitcher v' . self::VERSION . ' -->'
-			. '<div id="fgeditorswitcherSelector-' . $suffix . '" style="display:inline-flex;align-items:center;gap:.4rem;max-width:100%;">'
+			. '<div id="fgeditorswitcherSelector-' . $suffix . '" class="fg-switcher-wrap">'
 			. HTMLHelper::_('select.genericlist', $options, 'fgeditorswitcher-' . $suffix
 				, $attribs, 'value', 'text', $current, 'fgeditorswitcher-select-' . $suffix)
 			. '</div>';

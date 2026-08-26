@@ -1,5 +1,22 @@
 # Changelog — FG Editor Switcher (plg_fgeditorswitcher)
 
+## 2.2.0 — CSP-safe layout (no more inline `style="..."` attributes)
+- The wrapper `<div>` and `<select>` used PHP-generated inline `style="..."`
+  attributes for layout (`display:inline-flex`, `width:auto`, etc). A site
+  running Joomla's CSP system plugin with a strict `style-src` (no
+  `'unsafe-inline'`) would have those attributes stripped by the browser,
+  breaking the layout. JS's own runtime colour/position tweaks (via
+  `element.style.setProperty()`) are unaffected either way - CSP only
+  restricts inline style markup/`<style>` blocks, not programmatic CSSOM
+  writes.
+- Fix: moved that layout into two real CSS classes,
+  `.fg-switcher-wrap`/`.fg-switcher-select` (in `fgeditorswitcher.css`), used
+  on the div/select instead of `style="..."`. As a side effect, this also
+  replaces the `[id^="..."]` attribute-prefix selectors previously used in
+  both CSS and the relocation JS with plain class selectors - unique `id`s
+  are kept on both elements (still needed for HTML validity/uniqueness), but
+  no longer required for styling or for JS to find them.
+
 ## 2.1.9 — More reliable scroll restoration
 - The scroll position was restored on `DOMContentLoaded`, which fires before
   layout has necessarily settled - TinyMCE in particular builds its own

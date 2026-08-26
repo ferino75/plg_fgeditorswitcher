@@ -1,17 +1,29 @@
 /**
  * plg_fgeditorswitcher
  *
- * Fallback spacing for the wrapper (only relevant before/if the selector is
- * relocated into a ".editor-xtd-buttons" toolbar by fgeditorswitcher.js) and
- * the selector's own look. Deliberately does NOT set its own margin: the
- * admin template's own ambient rule ".editor-xtd-buttons .btn { margin-bottom: 5px; }"
- * already applies here too (the selector also carries the ".btn" class), and
- * that asymmetric margin is what keeps it vertically aligned with its
- * sibling buttons under "align-items:center". Overriding it here would undo
- * that alignment again.
+ * Layout for the wrapper and the selector's own look. Kept in this
+ * stylesheet as real CSS classes, rather than inline style="..." attributes
+ * in the PHP-generated markup: a site running Joomla's CSP system plugin
+ * with a strict style-src (no 'unsafe-inline') would otherwise have those
+ * inline attributes stripped, breaking the layout. Fallback spacing on
+ * .fg-switcher-wrap is only relevant before/if the selector is relocated
+ * into a ".editor-xtd-buttons" toolbar by fgeditorswitcher.js. Deliberately
+ * does NOT set its own margin: the admin template's own ambient rule
+ * ".editor-xtd-buttons .btn { margin-bottom: 5px; }" already applies here
+ * too (the selector also carries the ".btn" class), and that asymmetric
+ * margin is what keeps it vertically aligned with its sibling buttons under
+ * "align-items:center". Overriding it here would undo that alignment again.
  */
-[id^="fgeditorswitcherSelector-"] {
+.fg-switcher-wrap {
+	display: inline-flex;
+	align-items: center;
+	gap: .4rem;
+	max-width: 100%;
 	margin: 6px 0;
+}
+
+.fg-switcher-select {
+	width: auto;
 }
 
 /*
@@ -28,7 +40,7 @@
  * normalize/accessibility layer), which would otherwise silently win over a
  * plain declaration here even though this rule loads after them.
  */
-[id^="fgeditorswitcher-select-"] {
+.fg-switcher-select {
 	appearance: none !important;
 	-webkit-appearance: none !important;
 	-moz-appearance: none !important;
