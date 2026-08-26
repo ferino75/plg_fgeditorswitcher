@@ -2,7 +2,7 @@
 /**
  * @package       Joomla.Plugin
  * @subpackage    Editors.fgeditorswitcher
- * @version       2.1.7
+ * @version       2.1.8
  *
  * @copyright     (C) 2026 Fero
  * @license       https://www.gnu.org/licenses/gpl-2.0.html GNU/GPL
@@ -122,7 +122,7 @@ final class Fgeditorswitcher extends CMSPlugin
 	 * @var    string
 	 * @since  2.1.0
 	 */
-	private const VERSION = '2.1.7';
+	private const VERSION = '2.1.8';
 
 	/**
 	 * Affects constructor behavior. If true, language files will be loaded automatically.
@@ -433,7 +433,11 @@ final class Fgeditorswitcher extends CMSPlugin
 		// value directly (it already starts on the active editor), which
 		// stays correct even if the editor list ever changes and lets a
 		// cancelled switch be reverted to the exact right option.
+		$editorSelectorLabel = htmlspecialchars(Text::_('PLG_EDITORS_FGEDITORSWITCHER_SELECTEDITOR'), ENT_QUOTES, 'UTF-8');
+
 		$attribs = 'class="xtd-button btn btn-secondary" style="width:auto;"'
+			. ' aria-label="' . $editorSelectorLabel . '"'
+			. ' title="' . $editorSelectorLabel . '"'
 			. ' data-cookie-name="' . htmlspecialchars($this->cookiename, ENT_QUOTES, 'UTF-8') . '"'
 			. ' data-confirm="' . ($confirmation ? '1' : '0') . '"'
 			. ' data-confirm-title="' . htmlspecialchars($confirmTitle, ENT_QUOTES, 'UTF-8') . '"'

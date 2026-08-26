@@ -1,5 +1,23 @@
 # Changelog — FG Editor Switcher (plg_fgeditorswitcher)
 
+## 2.1.8 — Accessible label + debounced change (no more per-arrow-key dialogs)
+- **2.1 Accessibility:** the `<select>` had no accessible name for screen
+  readers (no `<label>`/`aria-label`/`title`) - a WCAG 4.1.2 gap, even though
+  a matching language key (`PLG_EDITORS_FGEDITORSWITCHER_SELECTEDITOR`,
+  "Select editor") already existed unused. Added it as both `aria-label` and
+  `title`.
+- **2.2 Keyboard UX:** in Chrome/Edge, a *closed* `<select>` fires a `change`
+  event on every arrow-key press that moves the selection, not only once a
+  choice is committed - a keyboard user scanning through the options with
+  arrow keys got the confirmation dialog (and a reload once confirmed) on
+  every single key press. The `change` handler is now debounced (400ms): the
+  actual confirm/cookie/reload logic (moved into a new `commitChange()`) only
+  runs for the value the user has settled on for a brief moment, not every
+  intermediate value along the way. (The alternative of replacing the
+  `<select>` with a full custom Bootstrap dropdown was considered but
+  rejected as too invasive a redesign relative to the benefit, given how much
+  tuning already went into the current markup/styling.)
+
 ## 2.1.7 — Dropdown arrow now matches the toolbar's own text colour
 - The chevron drawn via CSS `background-image` was a hard-coded white SVG.
   JS already copies `background-color`/`border-color`/`color` from the

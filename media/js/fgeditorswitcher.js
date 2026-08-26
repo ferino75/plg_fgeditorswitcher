@@ -20,15 +20,6 @@
 	 */
 	function attachSwitcher(select)
 	{
-		var confirmEnabled = select.getAttribute('data-confirm') === '1';
-		// The currently active value, read directly off the select at attach
-		// time (it always starts pre-selected to the active editor). Used
-		// instead of an index so it stays correct even if the list of
-		// editors ever changes, and so a cancelled switch can be reverted to
-		// it below.
-		var currentValue = select.value;
-		var confirmTitle = select.getAttribute('data-confirm-title') || '';
-		var confirmMsg = select.getAttribute('data-confirm-msg') || '';
 		var cookieName = select.getAttribute('data-cookie-name');
 		var debug = select.getAttribute('data-debug') === '1';
 
@@ -36,6 +27,15 @@
 		{
 			return;
 		}
+
+		// The currently active value, read directly off the select at attach
+		// time (it always starts pre-selected to the active editor) and
+		// stored on the element itself (commitChange() is a standalone
+		// function, not nested in this closure, so it can't see a local
+		// variable here). Used instead of an index so it stays correct even
+		// if the list of editors ever changes, and so a cancelled switch can
+		// be reverted to it, or a debounced-away intermediate value ignored.
+		select.setAttribute('data-fg-current-value', select.value);
 
 		if (debug)
 		{
@@ -49,63 +49,100 @@
 				+ select.value + '" cookie="' + (cookiePair || '(not set)') + '"');
 		}
 
+		var pendingChange = null;
+
 		select.addEventListener('change', function ()
 		{
-			if (confirmEnabled)
+			var self = this;
+
+			// Chrome/Edge fire "change" on a CLOSED <select> for every
+			// arrow-key press that moves the selection, not only once a
+			// choice is actually committed - a keyboard user "scanning"
+			// through the options would otherwise get a confirmation
+			// dialog (and a reload, once confirmed) on every single key
+			// press. Debouncing here means only the value the user has
+			// actually settled on for a brief moment triggers the confirm/
+			// switch flow below, instead of every intermediate value along
+			// the way.
+			clearTimeout(pendingChange);
+			pendingChange = setTimeout(function ()
 			{
-				if (this.value === currentValue)
-				{
-					return;
-				}
-
-				if (!window.confirm(confirmTitle + '\r\n' + confirmMsg))
-				{
-					// The page isn't reloading (nothing was actually
-					// switched), so the <select> must be reverted by hand -
-					// otherwise it would keep showing the cancelled choice
-					// while the real active editor stays whatever it was.
-					this.value = currentValue;
-					return;
-				}
-			}
-
-			// "path=/" avoids the cookie being scoped to whichever admin URL
-			// it happened to be set from; "secure" is only added when the
-			// page itself is loaded over HTTPS.
-			document.cookie = cookieName + '=' + this.value + '; path=/; samesite=lax'
-				+ (location.protocol === 'https:' ? '; secure' : '');
-
-			if (debug)
-			{
-				// eslint-disable-next-line no-console
-				console.log('[plg_fgeditorswitcher] switching to "' + this.value + '", reloading...');
-			}
-
-			// Remember the current scroll position across the reload that
-			// follows a switch, so the page doesn't jump back to the top -
-			// sessionStorage (not a cookie) since it only needs to survive
-			// this one reload, for this one tab.
-			try
-			{
-				window.sessionStorage.setItem(SCROLL_KEY, String(window.scrollY));
-			}
-			catch (e)
-			{
-				// sessionStorage can be unavailable (e.g. private browsing in
-				// some browsers) - losing the scroll position is harmless, so
-				// just proceed without it rather than failing the switch.
-			}
-
-			// location.reload() repeats whatever HTTP method loaded the
-			// current document. Edit screens are normally opened via GET, but
-			// after a failed save/validation the current document can be the
-			// result of a POST - reload() would then risk the browser's
-			// "resubmit form?" prompt, or in the worst case silently
-			// re-submitting that POST. location.replace() with the current
-			// URL always performs a fresh GET, and replaces the history
-			// entry rather than adding a new one.
-			window.location.replace(window.location.href);
+				commitChange(self);
+			}, 400);
 		});
+	}
+
+	/**
+	 * The actual confirm/cookie/reload logic for a switcher <select>, run
+	 * (debounced) once the user has settled on a value. Split out from
+	 * attachSwitcher()'s "change" listener so the debounce wrapper there
+	 * stays simple.
+	 *
+	 * @param {HTMLSelectElement} select
+	 */
+	function commitChange(select)
+	{
+		var confirmEnabled = select.getAttribute('data-confirm') === '1';
+		var currentValue = select.getAttribute('data-fg-current-value') || '';
+		var confirmTitle = select.getAttribute('data-confirm-title') || '';
+		var confirmMsg = select.getAttribute('data-confirm-msg') || '';
+		var cookieName = select.getAttribute('data-cookie-name');
+		var debug = select.getAttribute('data-debug') === '1';
+
+		if (confirmEnabled)
+		{
+			if (select.value === currentValue)
+			{
+				return;
+			}
+
+			if (!window.confirm(confirmTitle + '\r\n' + confirmMsg))
+			{
+				// The page isn't reloading (nothing was actually
+				// switched), so the <select> must be reverted by hand -
+				// otherwise it would keep showing the cancelled choice
+				// while the real active editor stays whatever it was.
+				select.value = currentValue;
+				return;
+			}
+		}
+
+		// "path=/" avoids the cookie being scoped to whichever admin URL
+		// it happened to be set from; "secure" is only added when the
+		// page itself is loaded over HTTPS.
+		document.cookie = cookieName + '=' + select.value + '; path=/; samesite=lax'
+			+ (location.protocol === 'https:' ? '; secure' : '');
+
+		if (debug)
+		{
+			// eslint-disable-next-line no-console
+			console.log('[plg_fgeditorswitcher] switching to "' + select.value + '", reloading...');
+		}
+
+		// Remember the current scroll position across the reload that
+		// follows a switch, so the page doesn't jump back to the top -
+		// sessionStorage (not a cookie) since it only needs to survive
+		// this one reload, for this one tab.
+		try
+		{
+			window.sessionStorage.setItem(SCROLL_KEY, String(window.scrollY));
+		}
+		catch (e)
+		{
+			// sessionStorage can be unavailable (e.g. private browsing in
+			// some browsers) - losing the scroll position is harmless, so
+			// just proceed without it rather than failing the switch.
+		}
+
+		// location.reload() repeats whatever HTTP method loaded the
+		// current document. Edit screens are normally opened via GET, but
+		// after a failed save/validation the current document can be the
+		// result of a POST - reload() would then risk the browser's
+		// "resubmit form?" prompt, or in the worst case silently
+		// re-submitting that POST. location.replace() with the current
+		// URL always performs a fresh GET, and replaces the history
+		// entry rather than adding a new one.
+		window.location.replace(window.location.href);
 	}
 
 	/**
