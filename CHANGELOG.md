@@ -1,5 +1,16 @@
 # Changelog — FG Editor Switcher (plg_fgeditorswitcher)
 
+## 2.2.2 — Reverted the joomla.asset.json migration (broke asset loading)
+- 2.2.1's migration to `media/joomla.asset.json` + `useStyle()`/`useScript()`
+  broke JS/CSS loading in real-world testing.
+- Reverted to the previously verified-working `registerAndUseStyle()`/
+  `registerAndUseScript()` calls with a direct path (as used through 2.2.0).
+  `media/joomla.asset.json` and its manifest reference were removed; the
+  `VERSION` constant again drives the cache-busting query string as before.
+  Everything else from 2.2.1 (`<php_minimum>`, the `fgeditors` field type
+  rename, the uninstall cookie cleanup, the `LICENSE` reference fix) is
+  unaffected and kept.
+
 ## 2.2.1 — Packaging/manifest hygiene batch
 - **`<php_minimum>` in the manifest itself**, not just `updates.xml`: without
   it, Joomla could accept a direct ZIP install on an unsupported PHP version

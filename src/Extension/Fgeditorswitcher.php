@@ -2,7 +2,7 @@
 /**
  * @package       Joomla.Plugin
  * @subpackage    Editors.fgeditorswitcher
- * @version       2.2.1
+ * @version       2.2.2
  *
  * @copyright     (C) 2026 Fero
  * @license       https://www.gnu.org/licenses/gpl-2.0.html GNU/GPL
@@ -113,18 +113,16 @@ use Joomla\CMS\Editor\Editor;
 final class Fgeditorswitcher extends CMSPlugin
 {
 	/**
-	 * Plugin version, used for the diagnostic HTML comment emitted alongside
-	 * the selector. JS/CSS cache-busting is handled separately, by the
-	 * "version" fields in media/joomla.asset.json (since 2.2.1) - this
-	 * constant no longer drives that. Kept as a single constant anyway so a
-	 * version bump only has to touch this line, the header docblock and the
-	 * manifest's own <version> tag (a separate XML file, can't reference a
-	 * PHP constant).
+	 * Plugin version, used for the WebAssetManager cache-busting query
+	 * string and the diagnostic HTML comment. Kept as a single constant so a
+	 * version bump only has to touch this line (plus the header docblock and
+	 * the manifest's own <version> tag, which is a separate XML file and
+	 * can't reference a PHP constant).
 	 *
 	 * @var    string
 	 * @since  2.1.0
 	 */
-	private const VERSION = '2.2.1';
+	private const VERSION = '2.2.2';
 
 	/**
 	 * Affects constructor behavior. If true, language files will be loaded automatically.
@@ -371,22 +369,20 @@ final class Fgeditorswitcher extends CMSPlugin
 		// data-* attributes) so a single copy of each handles any number of
 		// selector instances.
 		//
-		// Declared in media/joomla.asset.json (installed to
-		// media/plg_fgeditorswitcher/joomla.asset.json) rather than registered
-		// ad hoc via registerAndUseStyle()/registerAndUseScript() with a direct
-		// path - the recommended J4+/5+ approach. Unlike components (loaded
-		// automatically "on dispatch"), a plugin's own asset registry file is
-		// not auto-discovered, so it has to be added explicitly here before
-		// useStyle()/useScript() can reference the names declared in it.
+		// Registered ad hoc via registerAndUseStyle()/registerAndUseScript()
+		// with a direct path (not via a media/joomla.asset.json registry
+		// file + useStyle()/useScript() by name - that was tried in 2.2.1 and
+		// reverted: it broke asset loading in real-world testing, and this
+		// direct approach is the one that has actually been verified working
+		// across every admin template/editor combination tested so far).
 		static $assetsRegistered = false;
 
 		if (!$assetsRegistered)
 		{
 			$assetsRegistered = true;
 			$wa               = $this->getApp()->getDocument()->getWebAssetManager();
-			$wa->getRegistry()->addRegistryFile('media/plg_fgeditorswitcher/joomla.asset.json');
-			$wa->useStyle('plg.editors.fgeditorswitcher');
-			$wa->useScript('plg.editors.fgeditorswitcher');
+			$wa->registerAndUseStyle('plg.editors.fgeditorswitcher', 'media/plg_fgeditorswitcher/css/fgeditorswitcher.css', ['version' => self::VERSION]);
+			$wa->registerAndUseScript('plg.editors.fgeditorswitcher', 'media/plg_fgeditorswitcher/js/fgeditorswitcher.js', ['version' => self::VERSION], ['defer' => true]);
 		}
 
 		// A page can contain more than one editor field (e.g. multiple custom

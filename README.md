@@ -22,8 +22,7 @@ More/...) - without going through Global Configuration.
 - Optional debug mode that logs the active editor and cookie value to the
   browser console.
 - Native Joomla 6 architecture: PSR-4, dependency injection via
-  `services/provider.php`, assets declared in `media/joomla.asset.json` and
-  loaded via WebAssetManager.
+  `services/provider.php`, WebAssetManager for JS/CSS.
 
 ## Requirements
 

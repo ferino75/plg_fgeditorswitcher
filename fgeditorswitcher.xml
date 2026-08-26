@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <extension type="plugin" version="4.0" group="editors" method="upgrade">
 	<name>plg_editors_fgeditorswitcher</name>
-	<version>2.2.1</version>
+	<version>2.2.2</version>
 	<author>Fero</author>
 	<authorEmail>ferino@atlas.sk</authorEmail>
 	<authorUrl>https://ferino75.github.io/</authorUrl>
@@ -22,7 +22,6 @@
 	<media destination="plg_fgeditorswitcher" folder="media">
 		<folder>js</folder>
 		<folder>css</folder>
-		<filename>joomla.asset.json</filename>
 	</media>
 	<languages>
 		<language tag="en-GB">language/en-GB/plg_editors_fgeditorswitcher.ini</language>
