@@ -2,7 +2,7 @@
 /**
  * @package       Joomla.Plugin
  * @subpackage    Editors.fgeditorswitcher
- * @version       2.1.1
+ * @version       2.1.2
  *
  * @copyright     (C) 2026 Fero
  * @license       https://www.gnu.org/licenses/gpl-2.0.html GNU/GPL
@@ -52,6 +52,18 @@
  *  - The cookie is written with "path=/" and "Secure" (on HTTPS) so the
  *    remembered editor choice does not depend on which admin URL it was set
  *    from. It is deliberately a session cookie (no persistent expiry).
+ *  - The constructor deliberately does no work beyond parent::__construct().
+ *    This plugin has to be the site's configured default editor to function
+ *    at all, which means Joomla constructs it for every editor field
+ *    rendered anywhere (front-end or back-end), not only when this
+ *    switcher's own UI actually shows. Reading the cookie, resolving the
+ *    underlying editor, and instantiating its Editor::getInstance() wrapper
+ *    are deferred to initEditor() (called from onInit()/onDisplay(),
+ *    guarded so it only runs once per request) - avoiding unnecessary work
+ *    (and a nested Editor::getInstance() call mid-bootstrap) on pages/fields
+ *    that never actually call onDisplay() on this plugin, and avoiding a
+ *    RuntimeException from resolveEditor() propagating out of the
+ *    constructor into Joomla's own plugin-boot machinery.
  */
 
 
@@ -90,7 +102,7 @@ final class Fgeditorswitcher extends CMSPlugin
 	 * @var    string
 	 * @since  2.1.0
 	 */
-	private const VERSION = '2.1.1';
+	private const VERSION = '2.1.2';
 
 	/**
 	 * Affects constructor behavior. If true, language files will be loaded automatically.
@@ -123,6 +135,17 @@ final class Fgeditorswitcher extends CMSPlugin
 	 * @since 2.0.0
 	 */
 	protected string $cookiename = 'fgeditorswitchercurrent';
+
+	/**
+	 * Whether initEditor() has already run for this instance. The actual
+	 * cookie-reading / editor-resolution work is deferred to onInit()/
+	 * onDisplay() (see initEditor()) instead of running in the constructor,
+	 * so this guards against doing it twice if both get called.
+	 *
+	 * @var bool
+	 * @since 2.1.2
+	 */
+	private bool $initialised = false;
 
 	/**
 	 * Resolve the application object.
@@ -221,6 +244,17 @@ final class Fgeditorswitcher extends CMSPlugin
 	/**
 	 * Constructor
 	 *
+	 * Deliberately does nothing beyond the parent constructor. This plugin,
+	 * to work at all, must be configured as the site's default editor - which
+	 * means Joomla boots it (constructs this class) for every editor field
+	 * rendered anywhere, front-end or back-end, not just when this switcher's
+	 * own UI is actually shown. Reading the cookie, resolving which
+	 * underlying editor to use, and instantiating that editor's own
+	 * Editor::getInstance() wrapper are all deferred to initEditor() (called
+	 * from onInit()/onDisplay() instead), so that work only happens for
+	 * fields that actually get displayed through this plugin, and only once
+	 * each request even if both onInit() and onDisplay() run.
+	 *
 	 * @param   object  $subject  The object to observe
 	 * @param   array   $config   An array that holds the plugin configuration
 	 *
@@ -230,19 +264,53 @@ final class Fgeditorswitcher extends CMSPlugin
 	public function __construct(&$subject, $config)
 	{
 		parent::__construct($subject, $config);
+	}
 
-		// $this->params is already populated by the parent constructor from
-		// the same plugin row (services/provider.php passes it into $config)
-		// - no need to look it up again via PluginHelper::getPlugin().
-		$requested = $this->getApp()->getInput()->cookie->get($this->cookiename,
-			$this->params->get('default_editor', 'none'));
+	/**
+	 * Resolve and set up the underlying editor, once per request.
+	 *
+	 * See the constructor's docblock for why this isn't done there. A
+	 * RuntimeException from resolveEditor() (genuinely no usable editor
+	 * plugin enabled at all) is caught here rather than left to propagate:
+	 * letting it bubble up out of onInit()/onDisplay() - which Joomla may
+	 * call while it is itself in the middle of importing/booting plugins -
+	 * would turn an already-unlikely misconfiguration into a fatal error /
+	 * blank page. Catching it here just leaves $this->switchereditor null,
+	 * which onDisplay() already handles by returning an empty string.
+	 *
+	 * @return  void
+	 * @since   2.1.2
+	 */
+	private function initEditor(): void
+	{
+		if ($this->initialised)
+		{
+			return;
+		}
 
-		$editor = $this->resolveEditor($requested);
+		$this->initialised = true;
 
-		if ($editor !== $requested)
+		$requested = (string) $this->getApp()->getInput()->cookie->get(
+			$this->cookiename, (string) $this->params->get('default_editor', 'none')
+		);
+
+		try
+		{
+			$editor = $this->resolveEditor($requested);
+		}
+		catch (\RuntimeException $e)
+		{
+			return;
+		}
+
+		// Only warn when a genuine fallback happened (the requested editor
+		// existed but wasn't usable) - not for the ordinary case of an empty
+		// cookie value resolving to the configured default, which is not an
+		// error.
+		if ($editor !== $requested && $requested !== '')
 		{
 			$this->getApp()->enqueueMessage(
-				Text::_('PLG_EDITORS_FGEDITORSWITCHER_EDITORWASNOTFOUND'), 'error');
+				Text::_('PLG_EDITORS_FGEDITORSWITCHER_EDITORWASNOTFOUND'), 'warning');
 		}
 
 		$this->setSwitcherEditor($editor);
@@ -366,8 +434,9 @@ final class Fgeditorswitcher extends CMSPlugin
 	 * of loading assets inside display() itself, which the underlying editor
 	 * already does via Editor::display(). This method intentionally no longer
 	 * calls it - Joomla core still invokes onInit() on the active editor
-	 * plugin as part of the legacy interface, so the method is kept (an empty
-	 * implementation), just without forwarding to the deprecated call.
+	 * plugin as part of the legacy interface, so it is kept, now only to
+	 * trigger the lazy initEditor() (see its own docblock for why that isn't
+	 * done in the constructor).
 	 *
 	 * @return  void
 	 *
@@ -375,6 +444,7 @@ final class Fgeditorswitcher extends CMSPlugin
 	 */
 	public function onInit():void
 	{
+		$this->initEditor();
 	}
 
 
@@ -398,6 +468,8 @@ final class Fgeditorswitcher extends CMSPlugin
 	 */
 	public function onDisplay($name, $content, $width, $height, $col, $row, $buttons = true, $id = null, $asset = null, $author = null, $params = array()): string
 	{
+		$this->initEditor();
+
 		if ($this->switchereditor === null)
 		{
 			return '';

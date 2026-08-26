@@ -1,5 +1,28 @@
 # Changelog — FG Editor Switcher (plg_fgeditorswitcher)
 
+## 2.1.2 — Lazy editor initialisation (moved out of the constructor)
+- Because this plugin must be the site's configured default editor to work
+  at all, Joomla constructs it for *every* editor field rendered anywhere
+  (front-end or back-end) - not only when its own UI is shown. The
+  constructor previously did all the real work there: reading the cookie,
+  resolving the underlying editor, and instantiating its
+  `Editor::getInstance()` wrapper - meaning that ran on every such render,
+  including a nested `Editor::getInstance()` call in the middle of Joomla's
+  own editor-plugin bootstrap.
+- A more serious side effect: the "editor not found" warning could be queued
+  once per editor field on a page (duplicate messages), and a `RuntimeException`
+  from `resolveEditor()` inside the constructor could propagate into Joomla's
+  plugin-boot machinery instead of degrading gracefully.
+- Fix: the constructor now does nothing beyond `parent::__construct()`. The
+  actual work moved to a new `initEditor()`, called from `onInit()`/
+  `onDisplay()` and guarded to run only once per request. The
+  `RuntimeException` case is now caught there, leaving `$switchereditor`
+  `null` (already handled by `onDisplay()` returning `''`) instead of
+  propagating. The "editor not found" message also no longer fires for the
+  ordinary case of an empty cookie resolving to the configured default (only
+  for a genuine fallback), and its severity changed from `error` to
+  `warning`.
+
 ## 2.1.1 — More natural confirmation dialog text
 - The confirmation dialog text ("The data which is not saved does not
   return." / "Is it all right?") read like an old, awkward translation.
