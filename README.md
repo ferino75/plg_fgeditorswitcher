@@ -4,8 +4,8 @@
 
 ![Version](https://img.shields.io/github/v/release/ferino75/plg_fgeditorswitcher?label=version)
 ![Joomla](https://img.shields.io/badge/Joomla-4%20%7C%205%20%7C%206-orange.svg)
-![License](https://img.shields.io/badge/license-GPL--2.0-brightgreen.svg)
 ![PHP](https://img.shields.io/badge/PHP-7.4%2B-777bb4.svg)
+![License](https://img.shields.io/badge/license-GPL--2.0-brightgreen.svg)
 ![Downloads](https://img.shields.io/github/downloads/ferino75/plg_fgeditorswitcher/total?cacheSeconds=3600)
 
 A Joomla editor plugin that lets you switch which editor (TinyMCE, CodeMirror,
