@@ -96,7 +96,15 @@
 				// just proceed without it rather than failing the switch.
 			}
 
-			window.location.reload();
+			// location.reload() repeats whatever HTTP method loaded the
+			// current document. Edit screens are normally opened via GET, but
+			// after a failed save/validation the current document can be the
+			// result of a POST - reload() would then risk the browser's
+			// "resubmit form?" prompt, or in the worst case silently
+			// re-submitting that POST. location.replace() with the current
+			// URL always performs a fresh GET, and replaces the history
+			// entry rather than adding a new one.
+			window.location.replace(window.location.href);
 		});
 	}
 

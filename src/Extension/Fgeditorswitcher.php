@@ -2,7 +2,7 @@
 /**
  * @package       Joomla.Plugin
  * @subpackage    Editors.fgeditorswitcher
- * @version       2.1.5
+ * @version       2.1.6
  *
  * @copyright     (C) 2026 Fero
  * @license       https://www.gnu.org/licenses/gpl-2.0.html GNU/GPL
@@ -122,7 +122,7 @@ final class Fgeditorswitcher extends CMSPlugin
 	 * @var    string
 	 * @since  2.1.0
 	 */
-	private const VERSION = '2.1.5';
+	private const VERSION = '2.1.6';
 
 	/**
 	 * Affects constructor behavior. If true, language files will be loaded automatically.

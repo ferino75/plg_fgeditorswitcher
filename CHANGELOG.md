@@ -1,5 +1,15 @@
 # Changelog — FG Editor Switcher (plg_fgeditorswitcher)
 
+## 2.1.6 — Avoid resubmitting a POST on switch
+- `window.location.reload()` repeats whatever HTTP method loaded the current
+  document. Edit screens normally open via GET, but after a failed save/
+  validation the current document can be the result of a POST - reload()
+  could then trigger the browser's "resubmit form?" prompt, or in the worst
+  case silently re-submit that POST.
+- Fix: switched to `window.location.replace(window.location.href)`, which
+  always performs a fresh GET and replaces the history entry instead of
+  adding a new one.
+
 ## 2.1.5 — Robust toolbar matching (no longer relies on DOM order)
 - The relocation JS previously paired the n-th selector with the n-th
   `.editor-xtd-buttons` toolbar found anywhere on the page. On a page with a
