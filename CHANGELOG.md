@@ -1,5 +1,116 @@
 # Changelog — FG Editor Switcher (plg_fgeditorswitcher)
 
+## 2.3.0 — Content survives the switch, and the page stops being assumed static
+
+This release was developed by Perplexity AI (given the full v2.2.2 source and
+history), reviewed and compared against the GitHub `master` file-by-file, and
+adopted after the content-preservation feature was specifically verified
+working with JCE on khanovaskola.sk (typed live, switched editor without
+saving, content survived intact). Two small fixes were made on top before
+release: `<php_minimum>` corrected from `8.0.0` to `7.4.0` (the code uses no
+PHP 8.0-only syntax), an `HtmlDocument` instanceof guard added before
+`getWebAssetManager()` (defensive; `onDisplay()` is not expected to run
+outside an HTML-rendering request, but the guard is one line), and
+`FgeditorsField::getOptions()` tidied to `array_filter()` with `===`.
+
+Four groups of changes, developed against 2.1.1 and merged on top of everything
+2.1.2 – 2.2.2 already fixed. Nothing from 2.2.2 was reverted; the deliberate
+differences from it are listed at the end of this section.
+
+### Unsaved content is carried over to the new editor
+- Switching editors reloads the page, which threw away everything unsaved. The
+  confirmation dialog (2.0.x) only made that loss explicit; it did not avoid
+  it.
+- The content of every editor field on the page is now read before the reload
+  and written back after it. All fields are collected, not just the one being
+  switched, because the reload discards all of them.
+- New plugin parameter `preserve_content` (default Yes). When the handover
+  works there is nothing to lose, so the confirmation dialog is skipped; when
+  it cannot work (storage unavailable, or a payload above the 4 MB cap) the
+  dialog is asked for exactly as before. Three new language keys in en-GB and
+  sk-SK, and the description of `confirmation` was amended to say so.
+- The value is read through `Joomla.editors.instances[id]`, not from the
+  `<textarea>`: TinyMCE and CodeMirror only write back into the textarea on
+  form submit, so the textarea is stale while the user types. That lookup is
+  also the only one available to a classic (non-module) script on Joomla 4, 5
+  and 6 at once - the modern `JoomlaEditor` API is an ES module export with no
+  global, and since Joomla 5.2 `JoomlaEditor.register()` mirrors the same
+  decorator object into `Joomla.editors.instances` for backward compatibility.
+  The cost is one deprecation warning in the console per switch, accepted
+  until this plugin moves to `EditorProviderInterface` and gains a module
+  entry point of its own.
+- Restoring writes into the field's `<textarea>` before any editor
+  initialises, which is what makes this work without polling: this asset is
+  registered before the delegated editor's assets, and every editor takes its
+  starting content from the textarea. `setValue()` is still attempted as a
+  safety net.
+- The handover lives in one `sessionStorage` entry that also carries the
+  scroll position, validated by URL and a 60 s timestamp and deleted on read,
+  so a manual reload later can never resurrect old content. PHP publishes the
+  editor's own field id via `data-editor-id`, derived exactly as Joomla's own
+  providers derive it (`$id ?: $name`, unsanitised), because a mismatch would
+  silently disable the whole feature.
+- The user is told that content was carried over (a Joomla notice), since
+  otherwise the text sitting in the new editor looks saved when it is not.
+
+### The client side stops assuming a static page
+- Selectors were only ever set up once, on `DOMContentLoaded`. Editor fields
+  that appear later - a subform row, a form loaded by AJAX, a modal - got no
+  switcher at all, and editors that build their toolbar asynchronously kept
+  the selector in its default inline position.
+- Added a `joomla:updated` listener (Joomla's own signal for re-rendered form
+  markup) and a `MutationObserver` on `document.documentElement` as the
+  backstop for everything that does not announce itself. Only added nodes are
+  examined, work is coalesced into one `requestAnimationFrame` pass, and the
+  retry pass for toolbars that have not appeared yet stops after 10 s so
+  TinyMCE rewriting its own document as the user types cannot keep the page
+  busy for nothing.
+- Setting up a selector is now idempotent (guarded by `dataset.fgAttached`),
+  so the extra passes cannot attach a second change handler to the same
+  `<select>`.
+- `findToolbarFor()` skips toolbars that already hold a switcher, so two
+  editor fields in one container cannot both be relocated into the same
+  toolbar.
+
+### Keyboard handling
+- 2.1.8 debounced the `change` event by 400 ms, which stops the per-arrow-key
+  dialog but still commits whatever value the user happens to pause on.
+- The debounce is now keyboard-aware: arrow keys start a 600 ms window, Enter,
+  Tab and blur commit immediately, Escape cancels and reverts to the active
+  editor, and a mouse selection acts at once instead of waiting.
+
+### Editor names
+- The option labels were `ucfirst($o->name)`, producing Tinymce and
+  Codemirror. Known editor elements are now mapped to their real spelling
+  (TinyMCE, CodeMirror, JCE, ...), with `ucfirst()` kept as the last-resort
+  fallback for editors not in the map.
+
+### Two orphaned files removed
+- `media/joomla.asset.json` was left in the repository by 2.2.2's revert even
+  though nothing references it any more (the manifest's `<media>` block only
+  installs the `js` and `css` folders, so it was never even deployed) and it
+  still declared version 2.2.1. Deleted.
+- `src/Field/EditorsField.php` became dead code when 2.2.1 renamed the field
+  class to `FgeditorsField`; the manifest resolves `type="fgeditors"` and
+  never loads it. Deleted.
+
+### Deliberate differences from 2.2.2
+- `onInit()` no longer triggers `initEditor()`. Resolving the underlying
+  editor is only needed by `onDisplay()`, and Joomla calls `onInit()` on the
+  active editor plugin for fields this switcher never renders itself.
+- The chevron is drawn by two CSS gradients tinted from a custom property
+  (`--fg-switcher-fg`) that JS sets alongside the background and border
+  colours, replacing the static white SVG plus the JS-rebuilt coloured SVG
+  from 2.1.7. One mechanism instead of two, and no `background-image` written
+  from JavaScript. The matched colours are applied through
+  `.fg-switcher-select--matched` at equal specificity to the templates' own
+  `select.btn { appearance: auto !important }` rules.
+- The fallback `<textarea>` (2.1.3) carries `form-control` and only emits a
+  `style` attribute when a width or height was actually passed, instead of
+  always emitting one - the CSP argument behind 2.2.0 applies to this path
+  too.
+- The confirmation text joins its two lines with `\n` rather than `\r\n`.
+
 ## 2.2.2 — Reverted the joomla.asset.json migration (broke asset loading)
 - 2.2.1's migration to `media/joomla.asset.json` + `useStyle()`/`useScript()`
   broke JS/CSS loading in real-world testing.

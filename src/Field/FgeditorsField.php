@@ -35,17 +35,9 @@ class FgeditorsField extends PluginsField
 {
 	protected function getOptions()
 	{
-		$editors = parent::getOptions();
-
-		foreach ($editors as $k => $editor)
-		{
-			if ($editor->value == 'fgeditorswitcher')
-			{
-				unset($editors[$k]);
-				break;
-			}
-		}
-
-		return $editors;
+		return array_filter(
+			parent::getOptions(),
+			static fn ($editor) => $editor->value !== 'fgeditorswitcher'
+		);
 	}
 }

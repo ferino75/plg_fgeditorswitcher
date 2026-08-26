@@ -16,9 +16,13 @@ More/...) - without going through Global Configuration.
   (colour, height, alignment) instead of a plain, mismatched `<select>`.
 - Works with any installed/enabled editor plugin, including third-party ones
   (e.g. JCE) that use a different toolbar markup than Joomla's core editors.
-- Supports multiple editor fields on the same admin page.
-- Remembers the chosen editor via a cookie, with an optional confirmation
-  prompt before switching (unsaved changes are lost on switch).
+- Carries unsaved content over to the newly selected editor when switching,
+  so nothing is lost - with an automatic fallback to a confirmation prompt
+  if the handover can't be completed (very large content, browser storage
+  unavailable, etc).
+- Supports multiple editor fields on the same admin page, including fields
+  added later (repeatable subforms, AJAX-loaded forms).
+- Remembers the chosen editor via a cookie.
 - Optional debug mode that logs the active editor and cookie value to the
   browser console.
 - Native Joomla 6 architecture: PSR-4, dependency injection via

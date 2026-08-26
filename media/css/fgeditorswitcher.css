@@ -1,18 +1,32 @@
 /**
  * plg_fgeditorswitcher
  *
- * Layout for the wrapper and the selector's own look. Kept in this
- * stylesheet as real CSS classes, rather than inline style="..." attributes
- * in the PHP-generated markup: a site running Joomla's CSP system plugin
- * with a strict style-src (no 'unsafe-inline') would otherwise have those
- * inline attributes stripped, breaking the layout. Fallback spacing on
- * .fg-switcher-wrap is only relevant before/if the selector is relocated
- * into a ".editor-xtd-buttons" toolbar by fgeditorswitcher.js. Deliberately
- * does NOT set its own margin: the admin template's own ambient rule
- * ".editor-xtd-buttons .btn { margin-bottom: 5px; }" already applies here
- * too (the selector also carries the ".btn" class), and that asymmetric
- * margin is what keeps it vertically aligned with its sibling buttons under
- * "align-items:center". Overriding it here would undo that alignment again.
+ * Everything visual about the selector lives here, in classes. Earlier
+ * versions rendered part of it as style="" attributes in the HTML and set
+ * more of it from JavaScript; both were replaced in 2.3.0:
+ *
+ *  - Style attributes are exactly what a strict Content Security Policy
+ *    switches off. Joomla ships an official CSP plugin, and a policy without
+ *    'unsafe-inline' in style-src silently drops every style attribute on the
+ *    page - which used to leave the selector as a full-width block element
+ *    stacked under the toolbar instead of a button-sized control inside it.
+ *  - Class selectors also replace the [id^="..."] prefix matching used
+ *    before. Prefix matching on ids is slower, and it silently tied the
+ *    stylesheet to a naming scheme that only PHP knows about.
+ *
+ * The dynamic part - matching the neighbouring toolbar button's actual
+ * colours, which are only known at runtime and differ per admin template -
+ * is passed in as three custom properties (see fgeditorswitcher.js) and
+ * applied by the .fg-switcher-select--matched rule at the bottom. That keeps
+ * the declarations (and their !important) in this file rather than as inline
+ * colour values on the element.
+ */
+
+/*
+ * The wrapper is inline so the selector sits on the same line as the editor's
+ * own toolbar, and its vertical margin is the fallback spacing for the case
+ * where the selector is NOT relocated into a ".editor-xtd-buttons" toolbar
+ * (e.g. "Editor - None", which renders no toolbar at all).
  */
 .fg-switcher-wrap {
 	display: inline-flex;
@@ -22,32 +36,67 @@
 	margin: 6px 0;
 }
 
-.fg-switcher-select {
-	width: auto;
-}
-
 /*
  * Native browser <select> dropdown arrows render differently to a button's
- * icon, so the native arrow is replaced with a plain chevron drawn via
- * background-image instead. The white fill here is only the fallback used
- * when the selector stays in its default inline position (not relocated
- * into an ".editor-xtd-buttons" toolbar) - once relocated, fgeditorswitcher.js
- * overrides this with a version of the same chevron coloured to match the
- * toolbar's own button text colour, since a hard-coded white arrow would be
- * invisible on an admin template whose xtd buttons are light-coloured. All
- * of these are !important: some admin templates apply their own !important
- * background/appearance resets to <select> elements (e.g. as part of a
- * normalize/accessibility layer), which would otherwise silently win over a
- * plain declaration here even though this rule loads after them.
+ * icon, so the native arrow is replaced with an arrow of our own.
+ *
+ * The selector is deliberately "select.fg-switcher-select.xtd-button" rather
+ * than a single class: !important alone does not settle a conflict between two
+ * !important declarations - specificity does. Admin templates that reset
+ * <select> elements through something like
+ * ".mytemplate select.btn { appearance: auto !important; background: ... !important; }"
+ * would otherwise win outright. Element + two classes puts this rule on equal
+ * footing, and since the plugin's stylesheet is added while the page body is
+ * being rendered it comes last, so it wins the tie.
+ *
+ * The arrow itself is drawn with two CSS gradients rather than an SVG in a
+ * data URI, because a data URI cannot inherit a colour: it has to bake one
+ * in. The previous version baked in white, which is invisible on any admin
+ * template whose xtd-button toolbar is light. Gradients accept currentColor,
+ * so the arrow now always matches the selector's own text colour - the same
+ * colour fgeditorswitcher.js copies from the neighbouring toolbar button.
+ *
+ * The two 6x6 boxes sit side by side (their background-positions are exactly
+ * 6px apart) and each holds one half of the triangle.
+ *
+ * The selector deliberately sets no margin of its own: the admin template's
+ * ambient ".editor-xtd-buttons .btn { margin-bottom: 5px; }" rule applies
+ * here too (the selector also carries the ".btn" class), and that asymmetric
+ * margin is what keeps it vertically aligned with its sibling buttons under
+ * "align-items: center". Overriding it would undo that alignment.
  */
-.fg-switcher-select {
+select.fg-switcher-select.xtd-button {
+	width: auto;
 	appearance: none !important;
 	-webkit-appearance: none !important;
 	-moz-appearance: none !important;
 	vertical-align: middle;
-	background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='%23fff' d='M8 11 3 6h10z'/%3E%3C/svg%3E") !important;
-	background-repeat: no-repeat !important;
-	background-position: right .6rem center !important;
-	background-size: 11px 11px !important;
+	background-image:
+		linear-gradient(45deg, transparent 50%, currentColor 50%),
+		linear-gradient(135deg, currentColor 50%, transparent 50%) !important;
+	background-repeat: no-repeat, no-repeat !important;
+	background-position: right 1.05rem center, right 0.675rem center !important;
+	background-size: 6px 6px, 6px 6px !important;
 	padding-right: 1.9rem !important;
+}
+
+/*
+ * Added by the script once the selector has been moved into an
+ * ".editor-xtd-buttons" toolbar: it then pushes itself to the far end of the
+ * toolbar instead of crowding the last button.
+ */
+.fg-switcher-select--in-toolbar {
+	margin-left: auto;
+}
+
+/*
+ * Added by the script only after it has read the real colours off a
+ * neighbouring toolbar button, so the custom properties are guaranteed to
+ * have values here. Without that guard an unset variable would compute to
+ * "unset" and strip the button's own background instead of matching it.
+ */
+select.fg-switcher-select.fg-switcher-select--matched {
+	background-color: var(--fg-switcher-bg) !important;
+	border-color: var(--fg-switcher-border) !important;
+	color: var(--fg-switcher-fg) !important;
 }

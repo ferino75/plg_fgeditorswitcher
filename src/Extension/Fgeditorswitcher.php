@@ -2,7 +2,7 @@
 /**
  * @package       Joomla.Plugin
  * @subpackage    Editors.fgeditorswitcher
- * @version       2.2.2
+ * @version       2.3.0
  *
  * @copyright     (C) 2026 Fero
  * @license       https://www.gnu.org/licenses/gpl-2.0.html GNU/GPL
@@ -11,6 +11,14 @@
  * @link          https://ferino75.github.io/
  *
  * Implementation notes (the "why" behind a few non-obvious decisions):
+ *  - Nothing is resolved in the constructor. PluginHelper::importPlugin('editors')
+ *    boots EVERY plugin of the "editors" group, not just the active one, so this
+ *    class is constructed on every request where any editor is loaded - even when
+ *    the active editor is TinyMCE and this switcher is never displayed. All the
+ *    real work (reading the cookie, resolving/instantiating the underlying
+ *    editor, enqueueing messages) therefore happens lazily in initEditor(),
+ *    called from onDisplay(). This also keeps Editor::getInstance() out of the
+ *    middle of an in-progress importPlugin('editors') call.
  *  - getApp() falls back through CMSPlugin::getApplication() to
  *    Factory::getApplication() explicitly, because the service provider calls
  *    setApplication() only AFTER construction, and this class declares its own
@@ -25,6 +33,19 @@
  *    Editor::initialise() is deliberately not called from onInit(): it is
  *    deprecated in current Joomla versions in favour of Editor::display()
  *    loading its own assets.
+ *  - If no usable editor can be resolved at all, onDisplay() renders a plain
+ *    <textarea> instead of an empty string. Returning '' would leave the form
+ *    with no input at all for that field, which not only blocks editing but
+ *    can also submit the record with an empty value.
+ *  - Option labels come from each editor's own installed sys.ini
+ *    ("PLG_EDITORS_<ELEMENT>", e.g. "Editor - TinyMCE"), not from
+ *    ucfirst($element) - that produced wrong brand spellings such as
+ *    "Tinymce"/"Codemirror"/"Jce". The leading "Editor - " qualifier is
+ *    stripped so the dropdown stays narrow enough for a toolbar.
+ *  - The plugin rows returned by PluginHelper::getPlugin() come out of a
+ *    static cache and are shared objects; they are therefore only READ here,
+ *    never written to. An earlier version set ->text on them, which silently
+ *    mutated Joomla's own cached rows for the rest of the request.
  *  - The selector <select> is styled with the same "xtd-button btn
  *    btn-secondary" classes as the standard editor-xtd buttons and, as a
  *    progressive enhancement, is relocated by JS to sit directly inside the
@@ -36,54 +57,48 @@
  *    selector reintroduces a vertical offset against its siblings. If no such
  *    toolbar exists for the active editor (e.g. "Editor - None"), the
  *    selector simply stays in its default inline position - never hidden.
- *    The JS finds each selector's toolbar by walking backwards through DOM
- *    siblings from that selector's own wrapper (which PHP always renders
- *    directly after the editor's own markup) rather than pairing the n-th
- *    selector with the n-th ".editor-xtd-buttons" found anywhere on the
- *    page - a page can have unrelated toolbars (an editor in a modal, a
- *    field from another component, a hidden subform), and pairing by
- *    position alone could move a selector next to the wrong editor.
  *  - getEditorSelector() builds a unique id/name suffix for every instance
  *    (a sanitised version of the editor field's own control name, plus a
- *    static per-request counter that actually guarantees uniqueness - the
- *    sanitised name alone can collide), so multiple editor fields on the
- *    same admin page each get their own valid, non-duplicated selector
- *    instead of only the first one working. The JS/CSS assets are
- *    registered once per page via WebAssetManager regardless of how many
- *    fields exist.
+ *    per-request counter that actually guarantees uniqueness - the sanitised
+ *    name alone can collide), so multiple editor fields on the same admin
+ *    page each get their own valid, non-duplicated selector instead of only
+ *    the first one working. The JS/CSS assets are registered once per page
+ *    via WebAssetManager regardless of how many fields exist. Both the
+ *    counter and the "assets already registered" flag are instance
+ *    properties, not statics: the plugin is a per-request singleton from the
+ *    DI container, so instance state is equivalent here but does not leak
+ *    across requests in a long-running (Swoole/RoadRunner) or test context.
  *  - Per-instance behaviour (confirmation text, the cookie name, debug
  *    logging) is passed to the static media/js/fgeditorswitcher.js via
  *    data-* attributes rather than being templated into inline JavaScript,
  *    so the JS is a plain cacheable asset and PHP only needs to do
  *    HTML-attribute escaping.
+ *  - No style="" attribute is rendered at all: the markup only carries the
+ *    "fg-switcher-wrap" / "fg-switcher-select" classes and the stylesheet
+ *    does the rest. A strict Content Security Policy (Joomla ships a CSP
+ *    plugin) without 'unsafe-inline' in style-src drops style attributes
+ *    silently, which used to break the selector's layout on exactly the
+ *    sites that are configured most carefully. The ids are kept, but only
+ *    as stable hooks - nothing styles by them any more.
  *  - The cookie is written with "path=/" and "Secure" (on HTTPS) so the
  *    remembered editor choice does not depend on which admin URL it was set
  *    from. It is deliberately a session cookie (no persistent expiry).
- *  - The constructor deliberately does no work beyond parent::__construct().
- *    This plugin has to be the site's configured default editor to function
- *    at all, which means Joomla constructs it for every editor field
- *    rendered anywhere (front-end or back-end), not only when this
- *    switcher's own UI actually shows. Reading the cookie, resolving the
- *    underlying editor, and instantiating its Editor::getInstance() wrapper
- *    are deferred to initEditor() (called from onInit()/onDisplay(),
- *    guarded so it only runs once per request) - avoiding unnecessary work
- *    (and a nested Editor::getInstance() call mid-bootstrap) on pages/fields
- *    that never actually call onDisplay() on this plugin, and avoiding a
- *    RuntimeException from resolveEditor() propagating out of the
- *    constructor into Joomla's own plugin-boot machinery.
- *  - If genuinely no usable editor plugin is enabled at all,
- *    onDisplay() renders a plain <textarea> instead of an empty string.
- *    Returning '' would silently drop the field from the form (no input,
- *    nothing submitted, risking existing content being wiped on save) - a
- *    bare textarea keeps the field present and editable, just without any
- *    toolbar/WYSIWYG, in this hopefully-rare misconfigured state.
- *  - getEditorSelector() builds its own fresh array of select.option()
- *    results rather than writing a "text" property directly onto the
- *    objects PluginHelper::getPlugin('editors') returns. Those are
- *    references into PluginHelper's own internal static cache (not copies),
- *    so mutating one persists for the rest of the request and could leak
- *    into any other code (another plugin, PluginsField, EditorsField...)
- *    that reads the same cached plugin list afterwards.
+ *  - Switching editors reloads the page, which would normally discard
+ *    everything the user had typed but not saved. The content is therefore
+ *    handed over from the old editor to the new one entirely on the client
+ *    (see media/js/fgeditorswitcher.js). PHP's only part in it is to publish
+ *    the id the delegated editor puts on its <textarea>, because that id is
+ *    what the JavaScript needs to look the editor instance up:
+ *    data-editor-id. The derivation "$id ?: $name" is not a guess - it is
+ *    exactly what Joomla's own editor providers do, so the value matches
+ *    whatever the delegate actually renders.
+ *    A deliberate design choice is that the handover is NOT routed through
+ *    the server: an alternative implementation would POST the content to a
+ *    com_ajax endpoint and stash it in the session, but the content still has
+ *    to be READ on the client either way (only the editor's own JS knows its
+ *    unsaved value), so that variant adds a public endpoint, a CSRF token, an
+ *    extra round trip and article content in server-side session storage for
+ *    no gain over sessionStorage.
  */
 
 
@@ -95,6 +110,7 @@ use Joomla\CMS\Plugin\PluginHelper;
 use Joomla\CMS\HTML\HTMLHelper;
 use Joomla\CMS\Language\Text;
 use Joomla\CMS\Application\CMSApplicationInterface;
+use Joomla\CMS\Document\HtmlDocument;
 use Joomla\CMS\Editor\Editor;
 
 // no direct access
@@ -122,7 +138,19 @@ final class Fgeditorswitcher extends CMSPlugin
 	 * @var    string
 	 * @since  2.1.0
 	 */
-	private const VERSION = '2.2.2';
+	private const VERSION = '2.3.0';
+
+	/**
+	 * Editors preferred as a fallback, in order, when the requested editor is
+	 * not usable. "none" first (always safe and cheap), then a lightweight
+	 * code editor, and only then whatever else happens to be enabled - so the
+	 * fallback does not land on an unexpectedly heavy editor just because it
+	 * comes first in the database.
+	 *
+	 * @var    string[]
+	 * @since  2.3.0
+	 */
+	private const FALLBACK_EDITORS = ['none', 'codemirror'];
 
 	/**
 	 * Affects constructor behavior. If true, language files will be loaded automatically.
@@ -135,7 +163,7 @@ final class Fgeditorswitcher extends CMSPlugin
 	/**
 	 * Editor wrapper for the currently active underlying editor.
 	 *
-	 * @var Joomla\CMS\Editor\Editor|null
+	 * @var \Joomla\CMS\Editor\Editor|null
 	 * @since 2.0.0
 	 */
 	protected ?Editor $switchereditor = null;
@@ -157,15 +185,56 @@ final class Fgeditorswitcher extends CMSPlugin
 	protected string $cookiename = 'fgeditorswitchercurrent';
 
 	/**
-	 * Whether initEditor() has already run for this instance. The actual
-	 * cookie-reading / editor-resolution work is deferred to onInit()/
-	 * onDisplay() (see initEditor()) instead of running in the constructor,
-	 * so this guards against doing it twice if both get called.
+	 * Whether initEditor() has already run for this request.
 	 *
-	 * @var bool
-	 * @since 2.1.2
+	 * @var    boolean
+	 * @since  2.3.0
 	 */
 	private bool $initialised = false;
+
+	/**
+	 * Whether this plugin's JS/CSS have already been handed to the
+	 * WebAssetManager for the current document.
+	 *
+	 * @var    boolean
+	 * @since  2.3.0
+	 */
+	private bool $assetsRegistered = false;
+
+	/**
+	 * Counter used to guarantee unique selector ids when a page contains more
+	 * than one editor field.
+	 *
+	 * @var    integer
+	 * @since  2.3.0
+	 */
+	private int $instanceCounter = 0;
+
+	/**
+	 * Resolved human-readable labels, keyed by editor element name.
+	 *
+	 * @var    array<string, string>
+	 * @since  2.3.0
+	 */
+	private array $labelCache = [];
+
+	/**
+	 * Constructor.
+	 *
+	 * Deliberately does nothing beyond the parent call: see the "lazy
+	 * initialisation" note in this file's header docblock. Everything that
+	 * touches the request, the cookie or other plugins happens in
+	 * initEditor(), which only runs when this editor is actually displayed.
+	 *
+	 * @param   object  $subject  The object to observe
+	 * @param   array   $config   An array that holds the plugin configuration
+	 *
+	 * @since       2.0.0
+	 */
+	public function __construct(&$subject, $config)
+	{
+		parent::__construct($subject, $config);
+	}
 
 	/**
 	 * Resolve the application object.
@@ -192,6 +261,62 @@ final class Fgeditorswitcher extends CMSPlugin
 		}
 
 		return $app;
+	}
+
+	/**
+	 * Resolve the underlying editor for this request, once.
+	 *
+	 * Called from onDisplay() rather than from the constructor so that the
+	 * cookie lookup, the fallback chain and the instantiation of another
+	 * editor plugin only happen when this plugin is genuinely the active
+	 * editor and is about to render something.
+	 *
+	 * A failure to resolve any editor at all is NOT fatal here: it leaves
+	 * $switchereditor as null, and onDisplay() then renders a plain textarea
+	 * instead. Throwing (as earlier versions effectively did from the
+	 * constructor) meant a site with no enabled editor plugin died with a
+	 * fatal error during plugin import.
+	 *
+	 * @return  void
+	 * @since   2.3.0
+	 */
+	private function initEditor(): void
+	{
+		if ($this->initialised)
+		{
+			return;
+		}
+
+		$this->initialised = true;
+
+		// $this->params is already populated by the parent constructor from
+		// the plugin row (services/provider.php passes it into $config)
+		// - no need to look it up again via PluginHelper::getPlugin().
+		$requested = (string) $this->getApp()->getInput()->cookie->get(
+			$this->cookiename,
+			(string) $this->params->get('default_editor', 'none')
+		);
+
+		$editor = $this->resolveEditor($requested);
+
+		if ($editor === null)
+		{
+			$this->getApp()->enqueueMessage(
+				Text::_('PLG_EDITORS_FGEDITORSWITCHER_EDITORWASNOTFOUND'), 'warning');
+
+			return;
+		}
+
+		// Only complain when something was actually asked for and could not be
+		// honoured. An empty cookie/parameter silently resolving to a fallback
+		// is normal first-run behaviour, not an error worth a message.
+		if ($editor !== $requested && $requested !== '')
+		{
+			$this->getApp()->enqueueMessage(
+				Text::_('PLG_EDITORS_FGEDITORSWITCHER_EDITORWASNOTFOUND'), 'warning');
+		}
+
+		$this->setSwitcherEditor($editor);
 	}
 
 	/**
@@ -222,118 +347,43 @@ final class Fgeditorswitcher extends CMSPlugin
 	 * Resolve the requested editor to one that is actually safe/possible to
 	 * use, falling back in stages if it isn't.
 	 *
-	 * Previously, an invalid requested editor fell straight back to
-	 * PluginHelper::getPlugin('editors', 'none') unconditionally, assuming
-	 * that plugin exists and is enabled - true in practice, but an admin can
-	 * disable it, in which case $plugin would be a falsy/empty result and
-	 * $plugin->name would no longer be safe to read. This widens the fallback
-	 * to: the requested editor, then "none" (if enabled), then the first
-	 * other enabled editor plugin found, only failing outright if genuinely
-	 * none is available at all.
+	 * The fallback order is: the requested editor, then each of
+	 * self::FALLBACK_EDITORS that is enabled, then the first other enabled
+	 * editor plugin found. Returns null - rather than throwing - if genuinely
+	 * no usable editor plugin is enabled, so the caller can degrade to a
+	 * plain textarea instead of taking the whole page down.
 	 *
 	 * @param   string  $requested  The editor element name to try first (from
 	 *                              the cookie, or the configured default).
 	 *
-	 * @return  string  The name of an editor plugin that is safe to use.
-	 * @throws  \RuntimeException  If no usable editor plugin is enabled at all.
+	 * @return  string|null  The name of an editor plugin that is safe to use,
+	 *                       or null if there is none.
 	 * @since   2.0.6
 	 */
-	private function resolveEditor(string $requested): string
+	private function resolveEditor(string $requested): ?string
 	{
 		if ($this->isValidEditor($requested))
 		{
 			return $requested;
 		}
 
-		if ($this->isValidEditor('none'))
+		foreach (self::FALLBACK_EDITORS as $candidate)
 		{
-			return 'none';
+			if ($this->isValidEditor($candidate))
+			{
+				return $candidate;
+			}
 		}
 
 		foreach (PluginHelper::getPlugin('editors') as $plugin)
 		{
-			if ($plugin->name !== 'fgeditorswitcher')
+			if ($this->isValidEditor((string) $plugin->name))
 			{
-				return $plugin->name;
+				return (string) $plugin->name;
 			}
 		}
 
-		throw new \RuntimeException('FG Editor Switcher: no usable editor plugin is enabled.');
-	}
-
-	/**
-	 * Constructor
-	 *
-	 * Deliberately does nothing beyond the parent constructor. This plugin,
-	 * to work at all, must be configured as the site's default editor - which
-	 * means Joomla boots it (constructs this class) for every editor field
-	 * rendered anywhere, front-end or back-end, not just when this switcher's
-	 * own UI is actually shown. Reading the cookie, resolving which
-	 * underlying editor to use, and instantiating that editor's own
-	 * Editor::getInstance() wrapper are all deferred to initEditor() (called
-	 * from onInit()/onDisplay() instead), so that work only happens for
-	 * fields that actually get displayed through this plugin, and only once
-	 * each request even if both onInit() and onDisplay() run.
-	 *
-	 * @param   object  $subject  The object to observe
-	 * @param   array   $config   An array that holds the plugin configuration
-	 *
-	 * @throws Exception
-	 * @since       2.0.0
-	 */
-	public function __construct(&$subject, $config)
-	{
-		parent::__construct($subject, $config);
-	}
-
-	/**
-	 * Resolve and set up the underlying editor, once per request.
-	 *
-	 * See the constructor's docblock for why this isn't done there. A
-	 * RuntimeException from resolveEditor() (genuinely no usable editor
-	 * plugin enabled at all) is caught here rather than left to propagate:
-	 * letting it bubble up out of onInit()/onDisplay() - which Joomla may
-	 * call while it is itself in the middle of importing/booting plugins -
-	 * would turn an already-unlikely misconfiguration into a fatal error /
-	 * blank page. Catching it here just leaves $this->switchereditor null,
-	 * which onDisplay() already handles by returning an empty string.
-	 *
-	 * @return  void
-	 * @since   2.1.2
-	 */
-	private function initEditor(): void
-	{
-		if ($this->initialised)
-		{
-			return;
-		}
-
-		$this->initialised = true;
-
-		$requested = (string) $this->getApp()->getInput()->cookie->get(
-			$this->cookiename, (string) $this->params->get('default_editor', 'none')
-		);
-
-		try
-		{
-			$editor = $this->resolveEditor($requested);
-		}
-		catch (\RuntimeException $e)
-		{
-			return;
-		}
-
-		// Only warn when a genuine fallback happened (the requested editor
-		// existed but wasn't usable) - not for the ordinary case of an empty
-		// cookie value resolving to the configured default, which is not an
-		// error.
-		if ($editor !== $requested && $requested !== '')
-		{
-			$this->getApp()->enqueueMessage(
-				Text::_('PLG_EDITORS_FGEDITORSWITCHER_EDITORWASNOTFOUND'), 'warning');
-		}
-
-		$this->setSwitcherEditor($editor);
+		return null;
 	}
 
 	/**
@@ -350,17 +400,112 @@ final class Fgeditorswitcher extends CMSPlugin
 	}
 
 	/**
+	 * Human-readable label for an editor plugin.
+	 *
+	 * Each editor ships its own administrator sys.ini declaring its proper
+	 * name under the conventional "PLG_EDITORS_<ELEMENT>" key (e.g.
+	 * "Editor - TinyMCE" for "tinymce"), which is the same string Joomla's own
+	 * Plugins manager shows. That is loaded and used here instead of
+	 * ucfirst($element), which produced incorrect brand spellings such as
+	 * "Tinymce", "Codemirror" or "Jce". "PLG_<ELEMENT>" is tried as a second
+	 * key because some third-party editors name their string that way, and
+	 * ucfirst() remains the last-resort fallback.
+	 *
+	 * The leading qualifier of the translated name ("Editor - ...") is
+	 * stripped: inside a toolbar-sized dropdown, repeating the word "Editor"
+	 * on every option is pure noise.
+	 *
+	 * @param   string  $element  The editor plugin element name.
+	 *
+	 * @return  string
+	 * @since   2.3.0
+	 */
+	private function editorLabel(string $element): string
+	{
+		if (isset($this->labelCache[$element]))
+		{
+			return $this->labelCache[$element];
+		}
+
+		$extension = 'plg_editors_' . $element;
+		$language  = $this->getApp()->getLanguage();
+
+		// Editor sys.ini files normally live in administrator/language/<tag>/;
+		// the plugin's own folder is checked too, the way CMSPlugin does.
+		$language->load($extension . '.sys', JPATH_ADMINISTRATOR)
+			|| $language->load($extension . '.sys', JPATH_PLUGINS . '/editors/' . $element);
+
+		$label = '';
+
+		foreach ([strtoupper($extension), 'PLG_' . strtoupper($element)] as $key)
+		{
+			$translated = Text::_($key);
+
+			if ($translated !== $key)
+			{
+				$label = $translated;
+				break;
+			}
+		}
+
+		if ($label === '')
+		{
+			$label = ucfirst($element);
+		}
+
+		// "Editor - TinyMCE" -> "TinyMCE" (and the same for translated names).
+		$parts = explode(' - ', $label, 2);
+
+		if (isset($parts[1]) && trim($parts[1]) !== '')
+		{
+			$label = trim($parts[1]);
+		}
+
+		return $this->labelCache[$element] = $label;
+	}
+
+	/**
+	 * Build the list of selectable editors.
+	 *
+	 * The rows returned by PluginHelper::getPlugin() come from a static cache
+	 * and are shared objects, so they are only read here - never modified.
+	 *
+	 * @return  array  An array of HTMLHelper select options.
+	 * @since   2.3.0
+	 */
+	private function getEditorOptions(): array
+	{
+		$options = [];
+
+		foreach (PluginHelper::getPlugin('editors') as $plugin)
+		{
+			$element = (string) $plugin->name;
+
+			if ($element === '' || $element === 'fgeditorswitcher')
+			{
+				continue;
+			}
+
+			$options[] = HTMLHelper::_('select.option', $element, $this->editorLabel($element));
+		}
+
+		return $options;
+	}
+
+	/**
 	 * Create the selector of editors
 	 *
-	 * @param   string  $current  The name of the currently active underlying editor.
-	 * @param   string  $name     The control name of the editor field this selector belongs to
-	 *                            (used to build a unique id/name so multiple editor fields on
-	 *                            the same page each get their own, valid, non-duplicated selector).
+	 * @param   string  $current   The name of the currently active underlying editor.
+	 * @param   string  $name      The control name of the editor field this selector belongs to
+	 *                             (used to build a unique id/name so multiple editor fields on
+	 *                             the same page each get their own, valid, non-duplicated selector).
+	 * @param   string  $editorId  The id the delegated editor puts on its own <textarea>, published
+	 *                             to the JavaScript so it can read and restore that field's content.
 	 *
 	 * @return string
 	 * @since     2.0.0
 	 */
-	protected function getEditorSelector(string $current, string $name = ''): string
+	protected function getEditorSelector(string $current, string $name = '', string $editorId = ''): string
 	{
 		// Register (and mark as used) the plugin's own JS/CSS assets only once
 		// per page, no matter how many editor fields (and therefore how many
@@ -368,19 +513,18 @@ final class Fgeditorswitcher extends CMSPlugin
 		// (attribute-prefix selectors/queries, per-instance config read from
 		// data-* attributes) so a single copy of each handles any number of
 		// selector instances.
-		//
-		// Registered ad hoc via registerAndUseStyle()/registerAndUseScript()
-		// with a direct path (not via a media/joomla.asset.json registry
-		// file + useStyle()/useScript() by name - that was tried in 2.2.1 and
-		// reverted: it broke asset loading in real-world testing, and this
-		// direct approach is the one that has actually been verified working
-		// across every admin template/editor combination tested so far).
-		static $assetsRegistered = false;
+		// onDisplay() only ever runs in an actual HTML-rendering web request,
+		// so getDocument() returning something other than an HtmlDocument
+		// (e.g. in a CLI or JSON/API application context) is not expected in
+		// practice - but the guard is one line, and skips the CSS/JS
+		// registration cleanly instead of a fatal error calling
+		// getWebAssetManager() on something that doesn't have one.
+		$document = $this->getApp()->getDocument();
 
-		if (!$assetsRegistered)
+		if (!$this->assetsRegistered && $document instanceof HtmlDocument)
 		{
-			$assetsRegistered = true;
-			$wa               = $this->getApp()->getDocument()->getWebAssetManager();
+			$this->assetsRegistered = true;
+			$wa                     = $document->getWebAssetManager();
 			$wa->registerAndUseStyle('plg.editors.fgeditorswitcher', 'media/plg_fgeditorswitcher/css/fgeditorswitcher.css', ['version' => self::VERSION]);
 			$wa->registerAndUseScript('plg.editors.fgeditorswitcher', 'media/plg_fgeditorswitcher/js/fgeditorswitcher.js', ['version' => self::VERSION], ['defer' => true]);
 		}
@@ -390,35 +534,16 @@ final class Fgeditorswitcher extends CMSPlugin
 		// is not a reliable enough suffix: two different names can collapse
 		// to the same sanitised string (e.g. "jform[a][b]" and "jform_a__b_"
 		// both become "jform_a__b_"), and the same control name could
-		// conceivably appear twice on one page. A static per-request counter
-		// is appended so every instance gets a genuinely unique id/name,
+		// conceivably appear twice on one page. A per-request counter is
+		// appended so every instance gets a genuinely unique id/name,
 		// regardless of what the sanitised name collides with - the
 		// sanitised name itself is kept purely for readability.
-		static $instance = 0;
-		$instance++;
+		$this->instanceCounter++;
 
-		$suffix = preg_replace('/[^A-Za-z0-9_-]/', '_', $name !== '' ? $name : 'field') . '-' . $instance;
+		$suffix = preg_replace('/[^A-Za-z0-9_-]/', '_', $name !== '' ? $name : 'field')
+			. '-' . $this->instanceCounter;
 
-		// PluginHelper::getPlugin() returns references to objects held in its
-		// own internal static cache (not copies) - writing a new property
-		// onto one of them, as an earlier version of this method did
-		// ("$o->text = ..."), mutates that shared cache for the rest of the
-		// request, potentially visible to any other code (another plugin,
-		// PluginsField, EditorsField...) that reads it afterwards. Building a
-		// fresh array of select.option() results instead never touches the
-		// cached objects at all.
-		$options = [];
-
-		foreach (PluginHelper::getPlugin('editors') as $o)
-		{
-			if ($o->name === 'fgeditorswitcher')
-			{
-				continue;
-			}
-
-			$options[] = HTMLHelper::_('select.option', $o->name, ucfirst($o->name));
-		}
-
+		$options      = $this->getEditorOptions();
 		$confirmation = (bool) $this->params->get('confirmation', 1);
 		$debug        = (bool) $this->params->get('debug', 0);
 		$confirmTitle = '';
@@ -430,6 +555,26 @@ final class Fgeditorswitcher extends CMSPlugin
 			$confirmMsg   = Text::_('PLG_EDITORS_FGEDITORSWITCHER_CONFIRM_MESSAGE');
 		}
 
+		// Handing the unsaved content over to the newly selected editor needs
+		// two things from PHP, and nothing else: permission (the parameter) and
+		// the id of the field to read from and write back into. The confirmation
+		// text is still passed even when the handover is enabled, because the
+		// script falls back to asking whenever the handover could not actually
+		// be performed (no storage available, content too large, unreadable
+		// editor) - in that case data really would be lost, so the question is
+		// warranted again.
+		$preserve = (bool) $this->params->get('preserve_content', 1);
+
+		// Only sent when the feature is on, so the string is not needlessly
+		// embedded in every page.
+		$restoredMsg = $preserve ? Text::_('PLG_EDITORS_FGEDITORSWITCHER_CONTENTRESTORED') : '';
+
+		// The <select> carries no visible <label> (there is no room for one
+		// next to the toolbar buttons), so it needs an explicit accessible
+		// name - otherwise a screen reader announces an unlabelled combo box,
+		// which fails WCAG 4.1.2. The same string doubles as the tooltip.
+		$selectorLabel = Text::_('PLG_EDITORS_FGEDITORSWITCHER_SELECTEDITOR');
+
 		// All per-instance behaviour (the confirmation text, the cookie
 		// name, whether debug logging is on) is passed to the static
 		// fgeditorswitcher.js via data-* attributes instead of being
@@ -440,16 +585,18 @@ final class Fgeditorswitcher extends CMSPlugin
 		// value directly (it already starts on the active editor), which
 		// stays correct even if the editor list ever changes and lets a
 		// cancelled switch be reverted to the exact right option.
-		$editorSelectorLabel = htmlspecialchars(Text::_('PLG_EDITORS_FGEDITORSWITCHER_SELECTEDITOR'), ENT_QUOTES, 'UTF-8');
-
 		$attribs = 'class="xtd-button btn btn-secondary fg-switcher-select"'
-			. ' aria-label="' . $editorSelectorLabel . '"'
-			. ' title="' . $editorSelectorLabel . '"'
-			. ' data-cookie-name="' . htmlspecialchars($this->cookiename, ENT_QUOTES, 'UTF-8') . '"'
+			. ' aria-label="' . $this->escape($selectorLabel) . '"'
+			. ' title="' . $this->escape($selectorLabel) . '"'
+			. ' data-cookie-name="' . $this->escape($this->cookiename) . '"'
 			. ' data-confirm="' . ($confirmation ? '1' : '0') . '"'
-			. ' data-confirm-title="' . htmlspecialchars($confirmTitle, ENT_QUOTES, 'UTF-8') . '"'
-			. ' data-confirm-msg="' . htmlspecialchars($confirmMsg, ENT_QUOTES, 'UTF-8') . '"'
-			. ' data-debug="' . ($debug ? '1' : '0') . '"';
+			. ' data-confirm-title="' . $this->escape($confirmTitle) . '"'
+			. ' data-confirm-msg="' . $this->escape($confirmMsg) . '"'
+			. ' data-debug="' . ($debug ? '1' : '0') . '"'
+			. ' data-preserve="' . ($preserve ? '1' : '0') . '"'
+			. ' data-editor-id="' . $this->escape($editorId) . '"'
+			. ' data-editor-type="' . $this->escape($current) . '"'
+			. ' data-restored-msg="' . $this->escape($restoredMsg) . '"';
 
 		// HTML
 		// The selector is always rendered inline, directly after the active
@@ -458,19 +605,66 @@ final class Fgeditorswitcher extends CMSPlugin
 		// the same "xtd-button btn btn-secondary" classes as the standard
 		// editor-xtd buttons (Article/Image/Pagebreak/Read More/...) so it
 		// automatically matches their height, colour and rounding.
-		// Layout comes from the "fg-switcher-wrap"/"fg-switcher-select" CSS
-		// classes (fgeditorswitcher.css), not inline style="..." attributes -
-		// a site running Joomla's CSP system plugin with a strict style-src
-		// (no 'unsafe-inline') would otherwise have these attributes
-		// stripped, breaking the layout. The many colours/positions set at
-		// runtime via JS's element.style API are unaffected either way - CSP
-		// only restricts inline style markup and <style> blocks, not
-		// programmatic CSSOM writes.
 		return '<!-- plg_fgeditorswitcher v' . self::VERSION . ' -->'
-			. '<div id="fgeditorswitcherSelector-' . $suffix . '" class="fg-switcher-wrap">'
+			. '<div class="fg-switcher-wrap" id="fgeditorswitcherSelector-' . $suffix . '">'
 			. HTMLHelper::_('select.genericlist', $options, 'fgeditorswitcher-' . $suffix
 				, $attribs, 'value', 'text', $current, 'fgeditorswitcher-select-' . $suffix)
 			. '</div>';
+	}
+
+	/**
+	 * Escape a string for use inside a double-quoted HTML attribute.
+	 *
+	 * @param   string  $text  The raw string.
+	 *
+	 * @return  string
+	 * @since   2.3.0
+	 */
+	private function escape(string $text): string
+	{
+		return htmlspecialchars($text, ENT_QUOTES, 'UTF-8');
+	}
+
+	/**
+	 * Render a plain textarea, used when no editor plugin could be resolved.
+	 *
+	 * Returning an empty string in that situation (as earlier versions did)
+	 * left the form without any input for the field: the content could not be
+	 * edited and, because nothing was submitted for that control, saving the
+	 * record could wipe the stored value. A bare textarea keeps the field
+	 * editable and the data intact.
+	 *
+	 * @param   string       $name     The control name.
+	 * @param   string       $content  The contents of the text area.
+	 * @param   string       $width    The width of the text area (px or %).
+	 * @param   string       $height   The height of the text area (px or %).
+	 * @param   integer      $col      The number of columns for the textarea.
+	 * @param   integer      $row      The number of rows for the textarea.
+	 * @param   string|null  $id       An optional ID for the textarea.
+	 *
+	 * @return  string  HTML
+	 * @since   2.3.0
+	 */
+	private function getFallbackTextarea(string $name, string $content, string $width, string $height, int $col, int $row, ?string $id): string
+	{
+		$style = '';
+
+		if ($width !== '')
+		{
+			$style .= 'width:' . $width . ';';
+		}
+
+		if ($height !== '')
+		{
+			$style .= 'height:' . $height . ';';
+		}
+
+		return '<textarea name="' . $this->escape($name) . '"'
+			. ' id="' . $this->escape(($id !== null && $id !== '') ? $id : $name) . '"'
+			. ' cols="' . max(1, $col) . '" rows="' . max(1, $row) . '"'
+			. ' class="form-control"'
+			. ($style !== '' ? ' style="' . $this->escape($style) . '"' : '')
+			. '>' . htmlspecialchars($content, ENT_COMPAT, 'UTF-8') . '</textarea>';
 	}
 
 	/**
@@ -480,9 +674,10 @@ final class Fgeditorswitcher extends CMSPlugin
 	 * of loading assets inside display() itself, which the underlying editor
 	 * already does via Editor::display(). This method intentionally no longer
 	 * calls it - Joomla core still invokes onInit() on the active editor
-	 * plugin as part of the legacy interface, so it is kept, now only to
-	 * trigger the lazy initEditor() (see its own docblock for why that isn't
-	 * done in the constructor).
+	 * plugin as part of the legacy interface, so the method is kept (an empty
+	 * implementation), just without forwarding to the deprecated call. It also
+	 * deliberately does not trigger initEditor(): resolving the underlying
+	 * editor is left to onDisplay(), the only place that actually needs it.
 	 *
 	 * @return  void
 	 *
@@ -490,7 +685,6 @@ final class Fgeditorswitcher extends CMSPlugin
 	 */
 	public function onInit():void
 	{
-		$this->initEditor();
 	}
 
 
@@ -518,33 +712,22 @@ final class Fgeditorswitcher extends CMSPlugin
 
 		if ($this->switchereditor === null)
 		{
-			// Genuinely no usable editor plugin is enabled at all (see
-			// resolveEditor()/initEditor()) - returning an empty string here
-			// would silently drop the field from the form entirely: no input
-			// means nothing gets submitted, which on save can wipe out
-			// existing content for this field. A plain, unstyled <textarea>
-			// is a safe degraded mode: the field stays present and editable
-			// (as raw HTML, with no toolbar/WYSIWYG) even in this
-			// misconfigured, hopefully rare situation.
-			if (empty($id))
-			{
-				$id = $name;
-			}
-
-			return sprintf(
-				'<textarea name="%s" id="%s" cols="%d" rows="%d" style="width:%s;height:%s;">%s</textarea>',
-				htmlspecialchars($name, ENT_QUOTES, 'UTF-8'),
-				htmlspecialchars($id, ENT_QUOTES, 'UTF-8'),
-				(int) $col,
-				(int) $row,
-				htmlspecialchars((string) $width, ENT_QUOTES, 'UTF-8'),
-				htmlspecialchars((string) $height, ENT_QUOTES, 'UTF-8'),
-				htmlspecialchars($content, ENT_QUOTES, 'UTF-8')
-			);
+			// No editor plugin is usable at all - degrade to a plain textarea
+			// rather than rendering nothing. A switcher would be pointless
+			// here, since there is nothing to switch between.
+			return $this->getFallbackTextarea((string) $name, (string) $content, (string) $width,
+				(string) $height, (int) $col, (int) $row, $id);
 		}
+
+		// The id the delegated editor will use for its <textarea>. Joomla's own
+		// editor providers derive it as "$id ?: $name" and do not sanitise it
+		// any further, so the exact same rule is applied here rather than
+		// guessed at - the JavaScript looks the editor instance up by this id,
+		// and a mismatch would silently disable the content handover.
+		$editorId = ($id !== null && $id !== '') ? (string) $id : (string) $name;
 
 		//Display the specified editor and EditorSelector
 		return $this->switchereditor->display($name, $content, $width, $height, $col, $row, $buttons, $id, $asset, $author, $params)
-			. $this->getEditorSelector($this->switchereditorName, $name);
+			. $this->getEditorSelector($this->switchereditorName, $name, $editorId);
 	}
 }
