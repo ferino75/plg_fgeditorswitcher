@@ -133,17 +133,65 @@
 	}
 
 	/**
+	 * Find the ".editor-xtd-buttons" toolbar that belongs to a given
+	 * selector, without assuming anything about DOM order relative to other
+	 * selectors/toolbars on the page (a page can have unrelated toolbars -
+	 * an editor in a modal, a field from another component, a hidden
+	 * subform - and simply pairing the n-th selector with the n-th toolbar
+	 * found anywhere on the page can then move a selector next to the wrong
+	 * editor). Instead this walks backwards from the selector's own wrapper
+	 * (the PHP side always renders that wrapper directly after the active
+	 * editor's own markup, so the toolbar - if any - is somewhere in that
+	 * preceding sibling chain, or inside one of those siblings), falling
+	 * back to the nearest common field container if that search comes up
+	 * empty.
+	 *
+	 * @param {HTMLSelectElement} select
+	 * @return {Element|null}
+	 */
+	function findToolbarFor(select)
+	{
+		var wrapper = select.closest('[id^="fgeditorswitcherSelector-"]');
+
+		if (!wrapper)
+		{
+			return null;
+		}
+
+		var prev = wrapper.previousElementSibling;
+
+		while (prev)
+		{
+			if (prev.matches('.editor-xtd-buttons'))
+			{
+				return prev;
+			}
+
+			var found = prev.querySelector('.editor-xtd-buttons');
+
+			if (found)
+			{
+				return found;
+			}
+
+			prev = prev.previousElementSibling;
+		}
+
+		var field = wrapper.closest('.control-group, joomla-field-fancy-select, fieldset, .card-body');
+
+		return field ? field.querySelector('.editor-xtd-buttons') : null;
+	}
+
+	/**
 	 * Progressive enhancement: relocate each selector next to its own editor's
 	 * standard xtd buttons toolbar (".editor-xtd-buttons"), and copy that
 	 * toolbar's real button colours onto the selector so it visually matches
 	 * regardless of admin template. If a given editor has no such toolbar
 	 * (e.g. "Editor - None"), its selector is simply left where it already is
-	 * - never hidden or removed. On a page with multiple editor fields,
-	 * selectors and toolbars are paired up by their order in the DOM.
+	 * - never hidden or removed.
 	 */
 	function relocateAndMatch()
 	{
-		var wraps = document.querySelectorAll('.editor-xtd-buttons');
 		var selects = document.querySelectorAll('select[id^="fgeditorswitcher-select-"]');
 
 		for (var n = 0; n < selects.length; n++)
@@ -152,7 +200,7 @@
 
 			attachSwitcher(select);
 
-			var wrap = wraps[n];
+			var wrap = findToolbarFor(select);
 
 			if (!wrap)
 			{

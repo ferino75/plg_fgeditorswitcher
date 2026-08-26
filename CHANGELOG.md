@@ -1,5 +1,18 @@
 # Changelog — FG Editor Switcher (plg_fgeditorswitcher)
 
+## 2.1.5 — Robust toolbar matching (no longer relies on DOM order)
+- The relocation JS previously paired the n-th selector with the n-th
+  `.editor-xtd-buttons` toolbar found anywhere on the page. On a page with a
+  toolbar this plugin doesn't manage (an editor in a modal, a field from
+  another component, a hidden subform) or with DOM order differing from
+  render order, a selector could get moved next to the wrong editor's
+  toolbar.
+- Fix: added `findToolbarFor()`, which instead walks backwards through DOM
+  siblings starting from the selector's own wrapper (PHP always renders that
+  wrapper directly after the active editor's own markup), falling back to
+  the nearest common field container if that search finds nothing. No
+  assumption about page-wide DOM order any more.
+
 ## 2.1.4 — Stopped mutating Joomla's shared plugin cache
 - `getEditorSelector()` wrote `$o->text = ucfirst($o->name);` directly onto
   the objects returned by `PluginHelper::getPlugin('editors')` - but those

@@ -2,7 +2,7 @@
 /**
  * @package       Joomla.Plugin
  * @subpackage    Editors.fgeditorswitcher
- * @version       2.1.4
+ * @version       2.1.5
  *
  * @copyright     (C) 2026 Fero
  * @license       https://www.gnu.org/licenses/gpl-2.0.html GNU/GPL
@@ -36,6 +36,13 @@
  *    selector reintroduces a vertical offset against its siblings. If no such
  *    toolbar exists for the active editor (e.g. "Editor - None"), the
  *    selector simply stays in its default inline position - never hidden.
+ *    The JS finds each selector's toolbar by walking backwards through DOM
+ *    siblings from that selector's own wrapper (which PHP always renders
+ *    directly after the editor's own markup) rather than pairing the n-th
+ *    selector with the n-th ".editor-xtd-buttons" found anywhere on the
+ *    page - a page can have unrelated toolbars (an editor in a modal, a
+ *    field from another component, a hidden subform), and pairing by
+ *    position alone could move a selector next to the wrong editor.
  *  - getEditorSelector() builds a unique id/name suffix for every instance
  *    (a sanitised version of the editor field's own control name, plus a
  *    static per-request counter that actually guarantees uniqueness - the
@@ -115,7 +122,7 @@ final class Fgeditorswitcher extends CMSPlugin
 	 * @var    string
 	 * @since  2.1.0
 	 */
-	private const VERSION = '2.1.4';
+	private const VERSION = '2.1.5';
 
 	/**
 	 * Affects constructor behavior. If true, language files will be loaded automatically.
